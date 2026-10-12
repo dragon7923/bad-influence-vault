@@ -4,21 +4,21 @@
   
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Bad Influence Vault</title>
+  <title>Bad Influence Hobby</title>
   <meta name="theme-color" content="#111317">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon-192.png">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-title" content="BI Vault">
+  <meta name="apple-mobile-web-app-title" content="Bad Influence">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
   <script>
-// Bad Influence Vault (the account version of Paint Checker): stands in for Google's google.script.run.
+// Bad Influence Hobby (the account version of Paint Checker): stands in for Google's google.script.run.
 // The page calls the same functions as before (listPaints, addPaint, getRecipes...); here they read and write
 // the signed-in person's rows in the Supabase database instead of a Google Sheet.
 // The database's own rules (Row Level Security) are what keep each person's data private; this file only asks.
 (function () {
-  var SB_URL = 'https://ewgbdtkeaoguwayymtay.supabase.co', SB_KEY = 'sb_publishable_md1uOYqL25oZVSb-AknbOg_gfpV7TMH', VERSION = '1ec43cdebc';
+  var SB_URL = 'https://ewgbdtkeaoguwayymtay.supabase.co', SB_KEY = 'sb_publishable_md1uOYqL25oZVSb-AknbOg_gfpV7TMH', VERSION = '8ea75a40c2';
   var sb = window.supabase.createClient(SB_URL, SB_KEY, {
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, storageKey: 'pc-auth' }
   });
@@ -44,7 +44,7 @@
   }
   function frame(inner) {
     return '<div style="max-width:420px;width:100%;font-family:system-ui,sans-serif;color:#e9ebef">' +
-      '<div style="font-size:24px;font-weight:800">🎨 Bad Influence Vault</div>' + inner +
+      '<div style="font-size:24px;font-weight:800">🎨 Bad Influence Hobby</div>' + inner +
       '<div id="sierr" style="color:#ff8a8a;margin-top:12px;min-height:20px"></div>' +
       (ACCOUNT_EXTRAS ? '<div style="margin-top:18px;font-size:13px"><a href="privacy.html" style="color:#8e95a2">What we keep and how to delete it</a></div>' : '') + '</div>';
   }
@@ -1023,7 +1023,7 @@
 </head>
 <body>
   <header class="top">
-    <div class="logo">🎨 Bad Influence Vault</div>
+    <div class="logo">🎨 Bad Influence Hobby</div>
     <nav class="tabs">
       <button class="tab" id="tab-scan" onclick="go('scan')"><span class="ti">📷</span><span>Scan</span></button>
       <button class="tab" id="tab-inv" onclick="go('inv')"><span class="ti">🗂️</span><span>Paints</span></button>
