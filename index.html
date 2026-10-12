@@ -18,14 +18,13 @@
 // the signed-in person's rows in the Supabase database instead of a Google Sheet.
 // The database's own rules (Row Level Security) are what keep each person's data private; this file only asks.
 (function () {
-  var SB_URL = 'https://ewgbdtkeaoguwayymtay.supabase.co', SB_KEY = 'sb_publishable_md1uOYqL25oZVSb-AknbOg_gfpV7TMH', VERSION = '8ea75a40c2';
+  var SB_URL = 'https://ewgbdtkeaoguwayymtay.supabase.co', SB_KEY = 'sb_publishable_md1uOYqL25oZVSb-AknbOg_gfpV7TMH', VERSION = '2eee7c6676';
   var sb = window.supabase.createClient(SB_URL, SB_KEY, {
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, storageKey: 'pc-auth' }
   });
   var session = null;
-  // The privacy page and "Delete my account" are built but switched off until the owner says go
-  // (the delete needs supabase/003_delete_account.sql run first). Set to true to show them.
-  var ACCOUNT_EXTRAS = false;
+  // The privacy page and "Delete my account" (the delete needs supabase/003_delete_account.sql, run 2026-10-12).
+  var ACCOUNT_EXTRAS = true;
 
   // ---------- Sign in: your email, then the code we email you ----------
   var field = 'width:100%;box-sizing:border-box;padding:14px;border-radius:12px;border:1px solid #2b3039;background:#1a1d23;color:#e9ebef;font-size:17px;margin-top:6px';
