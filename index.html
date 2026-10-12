@@ -18,7 +18,7 @@
 // the signed-in person's rows in the Supabase database instead of a Google Sheet.
 // The database's own rules (Row Level Security) are what keep each person's data private; this file only asks.
 (function () {
-  var SB_URL = 'https://ewgbdtkeaoguwayymtay.supabase.co', SB_KEY = 'sb_publishable_md1uOYqL25oZVSb-AknbOg_gfpV7TMH', VERSION = '2eee7c6676';
+  var SB_URL = 'https://ewgbdtkeaoguwayymtay.supabase.co', SB_KEY = 'sb_publishable_md1uOYqL25oZVSb-AknbOg_gfpV7TMH', VERSION = 'a6f80317cd';
   var sb = window.supabase.createClient(SB_URL, SB_KEY, {
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, storageKey: 'pc-auth' }
   });
@@ -1111,6 +1111,7 @@
     <div id="quick"></div>
   </div>
 
+  <div class="muted" id="thanks" style="margin:10px 0 2px;text-align:center;font-size:14px">🙏 Thank you Bill for beta testing. This is your 20%.</div>
   <button type="button" class="ghost addbtn" onclick="rangeOpen()">📦 I own a whole range or set</button>
   <div class="typebox" id="rangebox" hidden>
     <div class="typetitle">📦 Add a whole range</div>
