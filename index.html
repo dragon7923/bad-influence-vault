@@ -18,7 +18,7 @@
 // the signed-in person's rows in the Supabase database instead of a Google Sheet.
 // The database's own rules (Row Level Security) are what keep each person's data private; this file only asks.
 (function () {
-  var SB_URL = 'https://ewgbdtkeaoguwayymtay.supabase.co', SB_KEY = 'sb_publishable_md1uOYqL25oZVSb-AknbOg_gfpV7TMH', VERSION = '748e339fb7';
+  var SB_URL = 'https://ewgbdtkeaoguwayymtay.supabase.co', SB_KEY = 'sb_publishable_md1uOYqL25oZVSb-AknbOg_gfpV7TMH', VERSION = '47ec4908c9';
   var sb = window.supabase.createClient(SB_URL, SB_KEY, {
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, storageKey: 'pc-auth' }
   });
@@ -1024,7 +1024,7 @@
   <header class="top">
     <div class="logo">🎨 Bad Influence Hobby</div>
     <nav class="tabs">
-      <button class="tab" id="tab-scan" onclick="go('scan')"><span class="ti">📷</span><span>Scan</span></button>
+      <button class="tab" id="tab-scan" onclick="go('scan')"><span class="ti">➕</span><span>Add</span></button>
       <button class="tab" id="tab-inv" onclick="go('inv')"><span class="ti">🗂️</span><span>Paints</span></button>
       <button class="tab" id="tab-eq" onclick="go('eq')"><span class="ti">🔁</span><span>Match</span></button>
       <button class="tab" id="tab-hl" onclick="go('hl')"><span class="ti">🎨</span><span>Colours</span></button>
