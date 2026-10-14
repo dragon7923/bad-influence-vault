@@ -18,7 +18,7 @@
 // the signed-in person's rows in the Supabase database instead of a Google Sheet.
 // The database's own rules (Row Level Security) are what keep each person's data private; this file only asks.
 (function () {
-  var SB_URL = 'https://ewgbdtkeaoguwayymtay.supabase.co', SB_KEY = 'sb_publishable_md1uOYqL25oZVSb-AknbOg_gfpV7TMH', VERSION = 'b3e6bc83f8';
+  var SB_URL = 'https://ewgbdtkeaoguwayymtay.supabase.co', SB_KEY = 'sb_publishable_md1uOYqL25oZVSb-AknbOg_gfpV7TMH', VERSION = '6b7ac297b0';
   var sb = window.supabase.createClient(SB_URL, SB_KEY, {
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, storageKey: 'pc-auth' }
   });
@@ -1011,6 +1011,13 @@
     .erow select { flex: 1; margin-top: 6px; }
     .erow.small button { margin-top: 6px; padding: 6px 12px; font-size: 14px; }
 
+    /* Narrow desktop windows and tablets: tighter tabs so all five fit beside the name */
+    @media (min-width: 701px) and (max-width: 900px) {
+      .top { padding: 10px 12px; gap: 8px; }
+      .logo { font-size: 16px; }
+      .tabs { gap: 0; }
+      .tab { padding: 8px 9px; font-size: 14px; gap: 5px; }
+    }
     /* Phones: tabs move to a bar along the bottom */
     @media (max-width: 700px) {
       body { padding-bottom: 74px; }
