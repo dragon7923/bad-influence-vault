@@ -18,7 +18,7 @@
 // the signed-in person's rows in the Supabase database instead of a Google Sheet.
 // The database's own rules (Row Level Security) are what keep each person's data private; this file only asks.
 (function () {
-  var SB_URL = 'https://ewgbdtkeaoguwayymtay.supabase.co', SB_KEY = 'sb_publishable_md1uOYqL25oZVSb-AknbOg_gfpV7TMH', VERSION = '8ae9e7e93e';
+  var SB_URL = 'https://ewgbdtkeaoguwayymtay.supabase.co', SB_KEY = 'sb_publishable_md1uOYqL25oZVSb-AknbOg_gfpV7TMH', VERSION = '9d3020b70f';
   var sb = window.supabase.createClient(SB_URL, SB_KEY, {
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, storageKey: 'pc-auth' }
   });
@@ -1081,11 +1081,12 @@
   document.addEventListener('DOMContentLoaded', function () {
     var box = document.getElementById('brandbox');
     var tag = '<div class="muted" style="margin-top:18px;font-size:12px;text-align:center">App version ' + VERSION + ' (account version)</div>';
-    if (box) box.insertAdjacentHTML('afterend', tag + '<div class="muted" id="acct" style="margin-top:6px;font-size:12px;text-align:center"></div>');
+    // Bottom of the Add page: the Paint brands card, then the version line and "Signed in as".
+    if (box) box.insertAdjacentHTML('afterend', '<div id="shop"></div>' + tag + '<div class="muted" id="acct" style="margin:6px 0 24px;font-size:12px;text-align:center"></div>');
     var pout = document.getElementById('pout');
     if (pout) pout.insertAdjacentHTML('afterend', tag);
     if (session) showAccount();
-    importCard();
+    // (The "Bring my paints over from my Google Sheet" button, importCard, was removed 2026-10-14 when the Sheet version was retired.)
     shopStart();
     // "Manage paint brands" (add a brand from the community list, or read a shop's website) belongs to the Google Sheet
     // version; here brands come built in, and locked ones are unlocked from the Paint brands card.
@@ -1472,7 +1473,6 @@
     <div class="hint" id="brandmsg"></div>
     <div class="muted">Brands I know: <span id="brandlist">loading…</span></div>
   </details>
-  <div class="muted" id="thanks" style="margin:18px 0 2px;text-align:center;font-size:14px">🙏 Thank you Bill for beta testing. This is your 20%.</div>
   </section>
 
 <script>
