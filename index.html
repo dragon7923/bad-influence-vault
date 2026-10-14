@@ -18,7 +18,7 @@
 // the signed-in person's rows in the Supabase database instead of a Google Sheet.
 // The database's own rules (Row Level Security) are what keep each person's data private; this file only asks.
 (function () {
-  var SB_URL = 'https://ewgbdtkeaoguwayymtay.supabase.co', SB_KEY = 'sb_publishable_md1uOYqL25oZVSb-AknbOg_gfpV7TMH', VERSION = '813079b823';
+  var SB_URL = 'https://ewgbdtkeaoguwayymtay.supabase.co', SB_KEY = 'sb_publishable_md1uOYqL25oZVSb-AknbOg_gfpV7TMH', VERSION = '431bf0a69b';
   var sb = window.supabase.createClient(SB_URL, SB_KEY, {
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, storageKey: 'pc-auth' }
   });
@@ -761,7 +761,7 @@
   // The database only hands over the brands this person may read (free, bought, subscribed, or the paywall is off),
   // so locking is done by the database, not here. Lists are kept on the device (Cache API) and only downloaded again
   // when a brand's list changes. Nothing here is visible to customers until the 'paywall_on' switch is turned on.
-  var FREE_BRANDS = ['Citadel', 'The Army Painter']; // free for everyone; used when a brand is first published
+  var FREE_BRANDS = ['The Army Painter']; // free for everyone; used when a brand is first published (2026-10-14: owner's choice)
   var SHOP = { index: [], owned: {}, sub: null, subRow: null, paywall: false, admin: false, loaded: false };
 
   function catCache(value) {
@@ -779,7 +779,8 @@
     if (offlineUser || !navigator.onLine) return cached ? cached.paints : [];
     var heads = await sb.from('catalog_brands').select('brand, updated_at');
     if (heads.error) return cached ? cached.paints : [];
-    if (!heads.data.length) return []; // not published yet: the app uses the public lists
+    // Nothing readable: either never published (the app then uses the public lists) or everything is locked for this person.
+    if (!heads.data.length) { var idx = await sb.rpc('catalog_index'); return idx.data && idx.data.length ? [] : null; }
     var stamp = heads.data.map(function (h) { return h.brand + '@' + h.updated_at; }).sort().join('|');
     if (cached && cached.stamp === stamp) return cached.paints;
     var all = [], names = heads.data.map(function (h) { return h.brand; });
@@ -1433,13 +1434,14 @@
         .catch(function () { /* list unavailable: Pro Acryl still works */ });
     }).concat(proColours(into), extraPaints(into))).then(function () { return into; });
   }
-  // The account version can hand over the lists from its database instead (window.pcCatalog); if that gives nothing
-  // (not set up yet, or unreachable), the public files are used.
+  // The account version hands over the lists from its database instead (window.pcCatalog). Only when it says the lists
+  // were never published there (null) are the public files used; if the database can't be reached, the app makes do
+  // with what it has, so a dropped connection never unlocks paid brands.
   var catalogReady = (window.pcCatalog
     ? window.pcCatalog().then(function (list) {
-        if (list && list.length) list.forEach(function (p) { CATALOG.push({ brand: p.brand, code: p.code || '', range: p.range || '', name: p.name, hex: p.hex || '' }); });
-        else return publicLists(CATALOG);
-      }, function () { return publicLists(CATALOG); })
+        if (list === null) return publicLists(CATALOG);
+        (list || []).forEach(function (p) { CATALOG.push({ brand: p.brand, code: p.code || '', range: p.range || '', name: p.name, hex: p.hex || '' }); });
+      }, function () {})
     : publicLists(CATALOG)).then(function () { BUILT_IN = CATALOG.length; return loadMine(); });
   window.pcPublicCatalog = function () { return publicLists([]); }; // for the owner's "publish the paint lists" button
 
