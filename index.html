@@ -18,7 +18,7 @@
 // the signed-in person's rows in the Supabase database instead of a Google Sheet.
 // The database's own rules (Row Level Security) are what keep each person's data private; this file only asks.
 (function () {
-  var SB_URL = 'https://ewgbdtkeaoguwayymtay.supabase.co', SB_KEY = 'sb_publishable_md1uOYqL25oZVSb-AknbOg_gfpV7TMH', VERSION = 'e2fa150580';
+  var SB_URL = 'https://ewgbdtkeaoguwayymtay.supabase.co', SB_KEY = 'sb_publishable_md1uOYqL25oZVSb-AknbOg_gfpV7TMH', VERSION = 'c00ab7a796';
   var sb = window.supabase.createClient(SB_URL, SB_KEY, {
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, storageKey: 'pc-auth' }
   });
@@ -45,7 +45,7 @@
     return '<div style="max-width:420px;width:100%;font-family:system-ui,sans-serif;color:#e9ebef">' +
       '<div style="font-size:24px;font-weight:800">🎨 Bad Influence Hobby</div>' + inner +
       '<div id="sierr" style="color:#ff8a8a;margin-top:12px;min-height:20px"></div>' +
-      (ACCOUNT_EXTRAS ? '<div style="margin-top:18px;font-size:13px"><a href="privacy.html" style="color:#8e95a2">What we keep and how to delete it</a></div>' : '') + '</div>';
+      (ACCOUNT_EXTRAS ? '<div style="margin-top:18px;font-size:13px"><a href="privacy.html" style="color:#8e95a2">What we keep and how to delete it</a> · <a href="terms.html" style="color:#8e95a2">Terms</a></div>' : '') + '</div>';
   }
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
 
@@ -185,7 +185,7 @@
       var el = document.getElementById('acct');
       if (!el) return;
       el.innerHTML = 'Signed in as ' + esc(session.user.email || '') + ' · <a href="#" id="signout" style="color:inherit">Sign out</a>' +
-        (ACCOUNT_EXTRAS ? '<div style="margin-top:6px"><a href="privacy.html" style="color:inherit">Privacy</a> · <a href="credits.html" style="color:inherit">Credits</a> · <a href="#" id="delacct" style="color:inherit">Delete my account</a></div>' : '');
+        (ACCOUNT_EXTRAS ? '<div style="margin-top:6px"><a href="privacy.html" style="color:inherit">Privacy</a> · <a href="terms.html" style="color:inherit">Terms</a> · <a href="credits.html" style="color:inherit">Credits</a> · <a href="#" id="delacct" style="color:inherit">Delete my account</a></div>' : '');
       if (ACCOUNT_EXTRAS) document.getElementById('delacct').onclick = function (e) { e.preventDefault(); deleteAccount(); };
       document.getElementById('signout').onclick = function (e) {
         e.preventDefault();
@@ -200,6 +200,11 @@
   // Removes the account and everything in it (paints, recipes, shopping list) from the database, for good.
   // The database does the deleting itself (supabase/003_delete_account.sql), and only ever for whoever is asking.
   function deleteAccount() {
+    // A paid subscription that renews has to be cancelled first, or Stripe would keep charging an account that's gone.
+    if (SHOP.subRow && SHOP.subRow.source === 'stripe' && SHOP.subRow.status === 'active' && !SHOP.subRow.cancels) {
+      toast('Cancel your subscription first: tap "Manage my subscription" in the Paint brands card, then delete your account.', 7000);
+      return;
+    }
     var box = signInBox();
     box.innerHTML = frame(
       '<div style="font-size:18px;font-weight:800;margin-top:14px">Delete my account</div>' +
@@ -789,7 +794,7 @@
 
   async function loadShop() {
     var r = await Promise.all([sb.rpc('catalog_index'), sb.from('app_settings').select('key, value'),
-      sb.from('subscriptions').select('status, expires_at, source'), sb.from('brand_purchases').select('brand'), sb.rpc('is_admin'),
+      sb.from('subscriptions').select('status, expires_at, source, cancels'), sb.from('brand_purchases').select('brand'), sb.rpc('is_admin'),
       sb.rpc('has_subscription')]);
     SHOP.index = r[0].data || [];
     SHOP.paywall = (r[1].data || []).some(function (s) { return s.key === 'paywall_on' && s.value === true; });
@@ -822,11 +827,12 @@
     if (!SHOP.index.length) h += '<div class="muted" style="margin-top:6px">The paint lists haven\'t been published to the database yet.</div>';
     else if (SHOP.sub) {
       h += '<div style="margin-top:6px">✅ You have every brand' + (SHOP.sub.status === 'gift' ? ' (a gift, thank you for testing!)' : '') + '.</div>' +
-        (end ? '<div class="muted">Paid up until ' + esc(end) + '.</div>' : '') +
+        (end ? '<div class="muted">' + (SHOP.sub.cancels ? 'Cancelled: you keep every brand until ' + esc(end) + ', with no more charges.' : 'Renews on ' + esc(end) + ' for $2.99.') + '</div>' : '') +
         (SHOP.sub.source === 'stripe' ? shopBtn('shopmanage', 'Manage my subscription', true) : '');
     } else {
       h += shopBtn('shopall', '🔓 Unlock every brand: $2.99 a month') +
-        '<div class="muted" style="margin:6px 0 2px">Cancel any time. Or unlock just the brands you use, 99¢ each, yours for good:</div>' +
+        '<div class="muted" style="margin:6px 0 2px">Renews monthly, cancel any time. Or unlock just the brands you use, 99¢ each, yours for good.' +
+        ' By buying you agree to the <a href="terms.html" style="color:inherit">terms</a>.</div>' +
         (locked.length ? locked.map(function (b, i) {
           return '<div class="row" style="justify-content:space-between;align-items:center;margin-top:6px"><span>' + esc(b.brand) + ' <span class="muted">' + b.paints + ' paints</span></span>' +
             '<button type="button" class="ghost shopone" data-i="' + i + '">Unlock 99¢</button></div>';

@@ -1,11 +1,11 @@
 // Offline helper: keeps the app and the paint lists on the device so it opens fast.
 // Your own data always comes fresh from your account (requests to the database are never cached).
-const CACHE = 'paint-checker-cloud-e2fa150580';
+const CACHE = 'paint-checker-cloud-c00ab7a796';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './icon-maskable.png', './apple-touch-icon.png'];
 
 // Also needed to open with no connection: the paint and barcode lists, and the sign-in library. Saved on a best-effort
 // basis, so one of them being unreachable doesn't stop the app installing.
-const EXTRA = ['./barcodes.json', './extra-paints.json', './privacy.html', './credits.html', 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js',
+const EXTRA = ['./barcodes.json', './extra-paints.json', './privacy.html', './credits.html', './terms.html', 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js',
   'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js', 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js',
   ...['Citadel_Colour', 'Army_Painter', 'Vallejo', 'Monument'].map(f => 'https://raw.githubusercontent.com/Arcturus5404/miniature-paints/main/paints/' + f + '.md')];
 
