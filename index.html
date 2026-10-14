@@ -18,7 +18,7 @@
 // the signed-in person's rows in the Supabase database instead of a Google Sheet.
 // The database's own rules (Row Level Security) are what keep each person's data private; this file only asks.
 (function () {
-  var SB_URL = 'https://ewgbdtkeaoguwayymtay.supabase.co', SB_KEY = 'sb_publishable_md1uOYqL25oZVSb-AknbOg_gfpV7TMH', VERSION = '9d12fd08fc';
+  var SB_URL = 'https://ewgbdtkeaoguwayymtay.supabase.co', SB_KEY = 'sb_publishable_md1uOYqL25oZVSb-AknbOg_gfpV7TMH', VERSION = 'e2fa150580';
   var sb = window.supabase.createClient(SB_URL, SB_KEY, {
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, storageKey: 'pc-auth' }
   });
@@ -789,7 +789,8 @@
 
   async function loadShop() {
     var r = await Promise.all([sb.rpc('catalog_index'), sb.from('app_settings').select('key, value'),
-      sb.from('subscriptions').select('status, expires_at, source'), sb.from('brand_purchases').select('brand'), sb.rpc('is_admin')]);
+      sb.from('subscriptions').select('status, expires_at, source'), sb.from('brand_purchases').select('brand'), sb.rpc('is_admin'),
+      sb.rpc('has_subscription')]);
     SHOP.index = r[0].data || [];
     SHOP.paywall = (r[1].data || []).some(function (s) { return s.key === 'paywall_on' && s.value === true; });
     var s = (r[2].data || [])[0] || null;
@@ -798,6 +799,9 @@
     SHOP.owned = {};
     (r[3].data || []).forEach(function (p) { SHOP.owned[p.brand] = true; });
     SHOP.admin = r[4].data === true;
+    if (!SHOP.sub && r[5].data === true) SHOP.sub = { status: 'gift', source: 'gift' }; // their email is on the owner's free list
+    SHOP.gifts = null;
+    if (SHOP.admin) { var g = await sb.from('gift_emails').select('email, note').order('created_at'); SHOP.gifts = g.data || []; }
     SHOP.loaded = true;
   }
 
@@ -833,7 +837,14 @@
     if (free.length) h += '<div class="muted" style="margin-top:6px">Free for everyone: ' + free.map(esc).join(', ') + '</div>';
     h += '<div style="margin-top:8px;font-size:13px"><a href="#" id="shoprestore" style="color:#8e95a2">Restore purchases</a></div><div id="shopmsg" class="muted" style="margin-top:6px"></div>';
     if (SHOP.admin) h += '<div style="margin-top:12px;border-top:1px solid #2b3039;padding-top:10px"><b>Owner</b>' +
-      shopBtn('shoppublish', '⬆️ Publish the paint lists to the database', true) + '<div id="pubmsg" class="muted" style="margin-top:6px"></div></div>';
+      shopBtn('shoppublish', '⬆️ Publish the paint lists to the database', true) + '<div id="pubmsg" class="muted" style="margin-top:6px"></div>' +
+      '<div style="margin-top:12px"><b>🎁 Free access</b><div class="muted">Anyone signing in with one of these emails gets every brand, free. Works before or after they sign up.</div>' +
+      '<div class="row" style="margin-top:6px"><input id="giftemail" type="email" placeholder="friend@example.com" style="flex:1;min-width:0">' +
+      '<button type="button" id="giftadd">Give free access</button></div>' +
+      (SHOP.gifts || []).map(function (g, i) {
+        return '<div class="row" style="justify-content:space-between;align-items:center;margin-top:6px"><span>' + esc(g.email) + '</span>' +
+          '<button type="button" class="ghost giftdel" data-i="' + i + '">Remove</button></div>';
+      }).join('') + '<div id="giftmsg" class="muted" style="margin-top:6px"></div></div></div>';
     box.innerHTML = h + '</div>';
 
     var msg = document.getElementById('shopmsg');
@@ -857,6 +868,31 @@
     document.getElementById('shoprestore').onclick = function (e) { e.preventDefault(); msg.textContent = 'Checking…'; refreshShop(true); };
     var pub = document.getElementById('shoppublish');
     if (pub) pub.onclick = function () { publishCatalog(pub, document.getElementById('pubmsg')); };
+    var add = document.getElementById('giftadd');
+    if (add) {
+      var gmsg = document.getElementById('giftmsg');
+      add.onclick = async function () {
+        var email = document.getElementById('giftemail').value.trim().toLowerCase();
+        if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { gmsg.textContent = 'Type a whole email address.'; return; }
+        if ((SHOP.gifts || []).some(function (g) { return g.email === email; })) { gmsg.textContent = email + ' already has free access.'; return; }
+        add.disabled = true;
+        var r = await sb.from('gift_emails').insert({ email: email });
+        if (r.error) { add.disabled = false; gmsg.textContent = '⚠️ ' + friendly(r.error); return; }
+        await loadShop(); renderShop();
+        document.getElementById('giftmsg').textContent = '✅ ' + email + ' now gets every brand free.';
+      };
+      [].forEach.call(box.querySelectorAll('.giftdel'), function (b) {
+        b.onclick = async function () {
+          var email = SHOP.gifts[Number(b.dataset.i)].email;
+          if (b.textContent !== 'Tap again to remove') { b.textContent = 'Tap again to remove'; return; }
+          b.disabled = true;
+          var r = await sb.from('gift_emails').delete().eq('email', email);
+          if (r.error) { b.disabled = false; gmsg.textContent = '⚠️ ' + friendly(r.error); return; }
+          await loadShop(); renderShop();
+          document.getElementById('giftmsg').textContent = email + ' no longer has free access.';
+        };
+      });
+    }
   }
 
   // After a purchase, or "Restore purchases": read what this person has again; if it changed which paints they may
