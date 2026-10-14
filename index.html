@@ -18,7 +18,7 @@
 // the signed-in person's rows in the Supabase database instead of a Google Sheet.
 // The database's own rules (Row Level Security) are what keep each person's data private; this file only asks.
 (function () {
-  var SB_URL = 'https://ewgbdtkeaoguwayymtay.supabase.co', SB_KEY = 'sb_publishable_md1uOYqL25oZVSb-AknbOg_gfpV7TMH', VERSION = 'b13f635001';
+  var SB_URL = 'https://ewgbdtkeaoguwayymtay.supabase.co', SB_KEY = 'sb_publishable_md1uOYqL25oZVSb-AknbOg_gfpV7TMH', VERSION = '8ae9e7e93e';
   var sb = window.supabase.createClient(SB_URL, SB_KEY, {
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, storageKey: 'pc-auth' }
   });
@@ -855,8 +855,46 @@
     return hit && !hit.free && !SHOP.owned[hit.brand] ? hit.brand : '';
   };
 
-  // Barcode scanning (beta) comes with All brands (a subscription or free access). Everyone has it while payments are off.
-  window.pcCanScan = function () { return !SHOP.loaded || !SHOP.paywall || !!SHOP.sub || SHOP.admin; };
+  // Barcode scanning (beta) and reading labels from photos come with All brands (a subscription or free access).
+  // Everyone has them while payments are off. Before the shop has loaded (or offline), the last known answer is used.
+  window.pcCanScan = function () {
+    if (SHOP.loaded) return !SHOP.paywall || !!SHOP.sub || SHOP.admin;
+    try { var v = localStorage.getItem('pc-canscan-' + uid()); return v === null ? true : v === '1'; } catch (e) { return true; }
+  };
+
+  // The front (Add) page: people with All brands see the Scan and Take photos buttons; everyone else sees a short card
+  // explaining what those (and auto-fill) do instead, with the way to get them.
+  function applyGates() {
+    var can = window.pcCanScan();
+    try { if (SHOP.loaded && uid()) localStorage.setItem('pc-canscan-' + uid(), can ? '1' : '0'); } catch (e) {}
+    var row = document.querySelector('.scanrow');
+    if (row) row.hidden = !can;
+    var title = document.querySelector('#scan .typetitle');
+    if (title) title.textContent = can ? '✍️ Or type a paint' : '✍️ Type a paint';
+    var card = document.getElementById('upsell');
+    if (can || !SHOP.loaded) { if (card) card.remove(); return; }
+    if (card) return;
+    var type = document.querySelector('#scan .typebox');
+    if (!type) return;
+    // Short by default (the typing box stays the main thing on the page); the details open on request.
+    type.insertAdjacentHTML('afterend', '<div class="card" id="upsell" style="margin:14px 0;text-align:left">' +
+      '<div style="font-weight:800">⚡ Add paints in seconds</div>' +
+      '<div class="muted" style="margin:2px 0 6px;font-size:14px">With <b style="color:#e9ebef">All brands</b>: scan barcodes, snap a whole shelf, and every brand fills itself in.</div>' +
+      '<details style="margin:4px 0 8px"><summary class="muted" style="cursor:pointer;font-size:14px">How it saves you time</summary>' +
+        '<div style="margin:8px 0 4px;font-size:14px">📷 <b>Scan a barcode</b> <span class="badge b-ok" style="font-size:11px;padding:2px 8px">Beta</span><br><span class="muted">Point your phone at a bottle in the shop and see in a second whether you already own it. No more buying doubles.</span></div>' +
+        '<div style="margin:8px 0 4px;font-size:14px">📸 <b>Snap your paint rack</b><br><span class="muted">Photograph your bottles and the app reads the labels, adding a whole shelf at once instead of one by one.</span></div>' +
+        '<div style="margin:8px 0 4px;font-size:14px">✍️ <b>Every brand fills itself in</b><br><span class="muted">Type “70.950” or “Mephiston” and the brand, range, name and type are done, with the paint\'s real colour for shade, highlight and colour-harmony suggestions. Without it, you type those in yourself (The Army Painter fills in free).</span></div>' +
+      '</details>' +
+      '<button type="button" id="upsellall">🔓 All brands: $2.99 a month</button>' +
+      '<div class="muted" style="margin-top:6px;font-size:13px">Cancel any time. Only need one brand? <a href="#" id="upsellone" style="color:#93c5fd">Unlock one for 99¢</a></div></div>');
+    var all = document.getElementById('upsellall');
+    all.onclick = function () { buy('all', '', all, null); };
+    document.getElementById('upsellone').onclick = function (e) {
+      e.preventDefault();
+      var pick = document.getElementById('shoppick');
+      if (pick) { pick.scrollIntoView({ behavior: 'smooth', block: 'center' }); setTimeout(function () { pick.focus(); }, 400); }
+    };
+  }
 
   function shopBtn(id, label, ghost) {
     return '<button type="button" id="' + id + '" class="' + (ghost ? 'ghost' : '') + '" style="margin-top:8px">' + label + '</button>';
@@ -865,6 +903,7 @@
   function renderShop() {
     var box = document.getElementById('shop');
     if (!box || !SHOP.loaded) return;
+    applyGates();
     if (!SHOP.paywall && !SHOP.admin) { box.innerHTML = ''; return; } // nobody pays yet: nothing to show
     var locked = SHOP.index.filter(function (b) { return !b.free && !SHOP.owned[b.brand]; });
     var owned = SHOP.index.filter(function (b) { return !b.free && SHOP.owned[b.brand]; });
@@ -878,13 +917,18 @@
         (end ? '<div class="muted">' + (SHOP.sub.cancels ? 'Cancelled: you keep every brand until ' + esc(end) + ', with no more charges.' : 'Renews on ' + esc(end) + ' for $2.99.') + '</div>' : '') +
         (SHOP.sub.source === 'stripe' ? shopBtn('shopmanage', 'Manage my subscription', true) : '');
     } else {
-      h += shopBtn('shopall', '🔓 Unlock every brand: $2.99 a month') +
-        '<div class="muted" style="margin:6px 0 2px">Renews monthly, cancel any time. Or unlock just the brands you use, 99¢ each, yours for good.' +
-        ' By buying you agree to the <a href="terms.html" style="color:inherit">terms</a>.</div>' +
-        (locked.length ? locked.map(function (b, i) {
-          return '<div class="row" style="justify-content:space-between;align-items:center;margin-top:6px"><span>' + esc(b.brand) + ' <span class="muted">' + b.paints + ' paints</span></span>' +
-            '<button type="button" class="ghost shopone" data-i="' + i + '">Unlock 99¢</button></div>';
-        }).join('') : '<div class="muted">You have unlocked every brand.</div>') +
+      h += '<div class="muted" style="margin:6px 0 2px"><b style="color:#e9ebef">All brands</b>: every brand fills itself in as you type, with real colours, ' +
+          'plus barcode scanning (beta) and reading labels from photos.</div>' +
+        shopBtn('shopall', '🔓 All brands: $2.99 a month') +
+        '<div class="muted" style="margin:4px 0 0">Renews monthly, cancel any time.</div>' +
+        (locked.length
+          ? '<div style="margin-top:14px"><b>Or unlock one brand, yours for good: 99¢</b></div>' +
+            '<div class="muted">That brand\'s paints fill themselves in, with their real colours.</div>' +
+            '<div class="row" style="margin-top:6px"><select id="shoppick" style="flex:1;min-width:0"><option value="">Choose a brand…</option>' +
+            locked.map(function (b, i) { return '<option value="' + i + '">' + esc(b.brand) + ' (' + b.paints + ' paints)</option>'; }).join('') +
+            '</select><button type="button" class="ghost" id="shopone">Unlock 99¢</button></div>'
+          : '<div class="muted" style="margin-top:8px">You have unlocked every brand.</div>') +
+        '<div class="muted" style="margin-top:6px;font-size:13px">By buying you agree to the <a href="terms.html" style="color:inherit">terms</a>.</div>' +
         (SHOP.subRow && SHOP.subRow.source === 'stripe' ? shopBtn('shopmanage', 'Manage my subscription', true) : '');
     }
     if (owned.length && !SHOP.sub) h += '<div class="muted" style="margin-top:8px">Yours: ' + owned.map(function (b) { return esc(b.brand); }).join(', ') + '</div>';
@@ -907,7 +951,12 @@
     if (all) all.onclick = function () { go('all', '', all); };
     var manage = document.getElementById('shopmanage');
     if (manage) manage.onclick = function () { go('manage', '', manage); };
-    [].forEach.call(box.querySelectorAll('.shopone'), function (b) { b.onclick = function () { go('brand', locked[Number(b.dataset.i)].brand, b); }; });
+    var one = document.getElementById('shopone');
+    if (one) one.onclick = function () {
+      var pick = document.getElementById('shoppick').value;
+      if (pick === '') { msg.textContent = 'Choose a brand first.'; document.getElementById('shoppick').focus(); return; }
+      go('brand', locked[Number(pick)].brand, one);
+    };
     document.getElementById('shoprestore').onclick = function (e) { e.preventDefault(); msg.textContent = 'Checking…'; refreshShop(true); };
     var pub = document.getElementById('shoppublish');
     if (pub) pub.onclick = function () { publishCatalog(pub, document.getElementById('pubmsg')); };
@@ -1042,6 +1091,7 @@
     // version; here brands come built in, and locked ones are unlocked from the Paint brands card.
     var bb = document.getElementById('brandbox');
     if (bb) bb.hidden = true;
+    ready.then(applyGates); // Scan / Take photos buttons: hidden straight away for people known not to have them
     // Barcode scanning is a beta feature here.
     var scanLabel = document.querySelector('label.scan .sub');
     if (scanLabel) scanLabel.insertAdjacentHTML('beforebegin', ' <span class="badge b-ok" style="font-size:11px;padding:2px 8px;vertical-align:middle">Beta</span>');
@@ -2165,12 +2215,15 @@
   // The account version can keep barcode scanning for subscribers (window.pcCanScan); others are told how to get it.
   function scanAllowed() { return !window.pcCanScan || window.pcCanScan(); }
   function scanLocked() {
-    show('<div class="card"><div class="big">📷 Barcode scanning <span class="badge b-ok">Beta</span></div>' +
-      '<div class="muted" style="margin:6px 0">Scanning comes with <b>All brands</b> ($2.99 a month): point the camera at a bottle to see in a second ' +
-      'whether you already own it, and fill in new paints automatically.</div>' +
+    show('<div class="card"><div class="big">📷 Scanning and photos</div>' +
+      '<div class="muted" style="margin:6px 0">Barcode scanning (beta) and reading labels from photos come with <b>All brands</b> ($2.99 a month): ' +
+      'point the camera at a bottle to see in a second whether you already own it, or photograph a shelf to add many paints at once.</div>' +
       '<button type="button" onclick="pcBuy(\'all\', \'\', this)">🔓 Get All brands: $2.99 a month</button>' +
       '<div class="muted" style="margin-top:8px">Or type the paint\'s name or number in the box above.</div></div>');
   }
+  document.querySelector('label.scan.alt').addEventListener('click', function (e) {
+    if (!scanAllowed()) { e.preventDefault(); scanLocked(); } // reading labels from photos: same rule as scanning
+  });
   document.querySelector('label.scan').addEventListener('click', function (e) {
     if (!scanAllowed()) { e.preventDefault(); scanLocked(); return; }
     if (!liveOk() || e.target === el('photo')) return;
