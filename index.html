@@ -18,7 +18,7 @@
 // the signed-in person's rows in the Supabase database instead of a Google Sheet.
 // The database's own rules (Row Level Security) are what keep each person's data private; this file only asks.
 (function () {
-  var SB_URL = 'https://ewgbdtkeaoguwayymtay.supabase.co', SB_KEY = 'sb_publishable_md1uOYqL25oZVSb-AknbOg_gfpV7TMH', VERSION = '6b7ac297b0';
+  var SB_URL = 'https://ewgbdtkeaoguwayymtay.supabase.co', SB_KEY = 'sb_publishable_md1uOYqL25oZVSb-AknbOg_gfpV7TMH', VERSION = '9d12fd08fc';
   var sb = window.supabase.createClient(SB_URL, SB_KEY, {
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, storageKey: 'pc-auth' }
   });
@@ -752,6 +752,173 @@
     };
   }
 
+  // ---------- Paint lists from the database (catalog_brands), and the shop ----------
+  // The database only hands over the brands this person may read (free, bought, subscribed, or the paywall is off),
+  // so locking is done by the database, not here. Lists are kept on the device (Cache API) and only downloaded again
+  // when a brand's list changes. Nothing here is visible to customers until the 'paywall_on' switch is turned on.
+  var FREE_BRANDS = ['Citadel', 'The Army Painter']; // free for everyone; used when a brand is first published
+  var SHOP = { index: [], owned: {}, sub: null, subRow: null, paywall: false, admin: false, loaded: false };
+
+  function catCache(value) {
+    if (!window.caches || !uid()) return Promise.resolve(null);
+    var key = location.origin + '/__pc-catalog-' + uid();
+    return caches.open('pc-catalog').then(function (c) {
+      if (value === undefined) return c.match(key).then(function (r) { return r ? r.json() : null; });
+      return value === null ? c.delete(key) : c.put(key, new Response(JSON.stringify(value)));
+    }).catch(function () { return null; });
+  }
+
+  window.pcCatalog = async function () {
+    await ready;
+    var cached = await catCache();
+    if (offlineUser || !navigator.onLine) return cached ? cached.paints : [];
+    var heads = await sb.from('catalog_brands').select('brand, updated_at');
+    if (heads.error) return cached ? cached.paints : [];
+    if (!heads.data.length) return []; // not published yet: the app uses the public lists
+    var stamp = heads.data.map(function (h) { return h.brand + '@' + h.updated_at; }).sort().join('|');
+    if (cached && cached.stamp === stamp) return cached.paints;
+    var all = [], names = heads.data.map(function (h) { return h.brand; });
+    for (var i = 0; i < names.length; i += 10) {
+      var r = await sb.from('catalog_brands').select('brand, paints').in('brand', names.slice(i, i + 10));
+      if (r.error) return cached ? cached.paints : [];
+      r.data.forEach(function (row) { (row.paints || []).forEach(function (p) { all.push({ brand: row.brand, code: p.code || '', range: p.range || '', name: p.name, hex: p.hex || '' }); }); });
+    }
+    catCache({ stamp: stamp, paints: all });
+    return all;
+  };
+
+  async function loadShop() {
+    var r = await Promise.all([sb.rpc('catalog_index'), sb.from('app_settings').select('key, value'),
+      sb.from('subscriptions').select('status, expires_at, source'), sb.from('brand_purchases').select('brand'), sb.rpc('is_admin')]);
+    SHOP.index = r[0].data || [];
+    SHOP.paywall = (r[1].data || []).some(function (s) { return s.key === 'paywall_on' && s.value === true; });
+    var s = (r[2].data || [])[0] || null;
+    SHOP.subRow = s;
+    SHOP.sub = s && ['active', 'trial', 'gift'].indexOf(s.status) !== -1 && (!s.expires_at || new Date(s.expires_at) > new Date()) ? s : null;
+    SHOP.owned = {};
+    (r[3].data || []).forEach(function (p) { SHOP.owned[p.brand] = true; });
+    SHOP.admin = r[4].data === true;
+    SHOP.loaded = true;
+  }
+
+  function shopBtn(id, label, ghost) {
+    return '<button type="button" id="' + id + '" class="' + (ghost ? 'ghost' : '') + '" style="margin-top:8px">' + label + '</button>';
+  }
+
+  function renderShop() {
+    var box = document.getElementById('shop');
+    if (!box || !SHOP.loaded) return;
+    if (!SHOP.paywall && !SHOP.admin) { box.innerHTML = ''; return; } // nobody pays yet: nothing to show
+    var locked = SHOP.index.filter(function (b) { return !b.free && !SHOP.owned[b.brand]; });
+    var owned = SHOP.index.filter(function (b) { return !b.free && SHOP.owned[b.brand]; });
+    var free = SHOP.index.filter(function (b) { return b.free; }).map(function (b) { return b.brand; });
+    var end = SHOP.sub && SHOP.sub.expires_at ? new Date(SHOP.sub.expires_at).toLocaleDateString() : '';
+    var h = '<div class="card" style="text-align:left;margin-top:14px"><div><b>🎨 Paint brands</b></div>';
+    if (SHOP.admin && !SHOP.paywall) h += '<div class="muted" style="margin:6px 0">Only you see this card: payments are switched off, so everyone gets every brand. Purchases here use Stripe\'s test mode.</div>';
+    if (!SHOP.index.length) h += '<div class="muted" style="margin-top:6px">The paint lists haven\'t been published to the database yet.</div>';
+    else if (SHOP.sub) {
+      h += '<div style="margin-top:6px">✅ You have every brand' + (SHOP.sub.status === 'gift' ? ' (a gift, thank you for testing!)' : '') + '.</div>' +
+        (end ? '<div class="muted">Paid up until ' + esc(end) + '.</div>' : '') +
+        (SHOP.sub.source === 'stripe' ? shopBtn('shopmanage', 'Manage my subscription', true) : '');
+    } else {
+      h += shopBtn('shopall', '🔓 Unlock every brand: $2.99 a month') +
+        '<div class="muted" style="margin:6px 0 2px">Cancel any time. Or unlock just the brands you use, 99¢ each, yours for good:</div>' +
+        (locked.length ? locked.map(function (b, i) {
+          return '<div class="row" style="justify-content:space-between;align-items:center;margin-top:6px"><span>' + esc(b.brand) + ' <span class="muted">' + b.paints + ' paints</span></span>' +
+            '<button type="button" class="ghost shopone" data-i="' + i + '">Unlock 99¢</button></div>';
+        }).join('') : '<div class="muted">You have unlocked every brand.</div>') +
+        (SHOP.subRow && SHOP.subRow.source === 'stripe' ? shopBtn('shopmanage', 'Manage my subscription', true) : '');
+    }
+    if (owned.length && !SHOP.sub) h += '<div class="muted" style="margin-top:8px">Yours: ' + owned.map(function (b) { return esc(b.brand); }).join(', ') + '</div>';
+    if (free.length) h += '<div class="muted" style="margin-top:6px">Free for everyone: ' + free.map(esc).join(', ') + '</div>';
+    h += '<div style="margin-top:8px;font-size:13px"><a href="#" id="shoprestore" style="color:#8e95a2">Restore purchases</a></div><div id="shopmsg" class="muted" style="margin-top:6px"></div>';
+    if (SHOP.admin) h += '<div style="margin-top:12px;border-top:1px solid #2b3039;padding-top:10px"><b>Owner</b>' +
+      shopBtn('shoppublish', '⬆️ Publish the paint lists to the database', true) + '<div id="pubmsg" class="muted" style="margin-top:6px"></div></div>';
+    box.innerHTML = h + '</div>';
+
+    var msg = document.getElementById('shopmsg');
+    function go(action, brand, btn) {
+      if (offlineUser || !navigator.onLine) { msg.textContent = 'You need a connection to buy.'; return; }
+      btn.disabled = true;
+      var was = btn.textContent;
+      btn.textContent = 'Opening the payment page…';
+      sb.functions.invoke('billing', { body: { action: action, brand: brand || '' } }).then(async function (r) {
+        if (r.data && r.data.url) { location.href = r.data.url; return; }
+        var why = r.data && r.data.error;
+        if (!why && r.error) { try { why = (await r.error.context.json()).error; } catch (e) { why = r.error.message; } }
+        btn.disabled = false; btn.textContent = was; msg.textContent = '⚠️ ' + (why || 'Couldn\'t open the payment page.');
+      });
+    }
+    var all = document.getElementById('shopall');
+    if (all) all.onclick = function () { go('all', '', all); };
+    var manage = document.getElementById('shopmanage');
+    if (manage) manage.onclick = function () { go('manage', '', manage); };
+    [].forEach.call(box.querySelectorAll('.shopone'), function (b) { b.onclick = function () { go('brand', locked[Number(b.dataset.i)].brand, b); }; });
+    document.getElementById('shoprestore').onclick = function (e) { e.preventDefault(); msg.textContent = 'Checking…'; refreshShop(true); };
+    var pub = document.getElementById('shoppublish');
+    if (pub) pub.onclick = function () { publishCatalog(pub, document.getElementById('pubmsg')); };
+  }
+
+  // After a purchase, or "Restore purchases": read what this person has again; if it changed which paints they may
+  // read, fetch the lists again (the page reloads to use them).
+  async function refreshShop(say) {
+    var before = JSON.stringify([SHOP.sub && SHOP.sub.status, Object.keys(SHOP.owned).sort()]);
+    await loadShop();
+    renderShop();
+    var after = JSON.stringify([SHOP.sub && SHOP.sub.status, Object.keys(SHOP.owned).sort()]);
+    if (before !== after && SHOP.paywall) { await catCache(null); location.reload(); return true; }
+    if (say && document.getElementById('shopmsg')) document.getElementById('shopmsg').textContent = '✅ Up to date.';
+    return before !== after;
+  }
+
+  // Owner only: gathers the built-in lists from the public files and saves them, one row per brand.
+  // A brand already in the database keeps its free/paid setting.
+  async function publishCatalog(btn, out) {
+    btn.disabled = true;
+    out.textContent = 'Gathering the paint lists…';
+    try {
+      var list = await window.pcPublicCatalog(), by = {};
+      list.forEach(function (p) { if (p.brand && p.name) (by[p.brand] = by[p.brand] || []).push({ code: p.code || '', range: p.range || '', name: p.name, hex: p.hex || '' }); });
+      var was = {};
+      SHOP.index.forEach(function (b) { was[b.brand] = b.free; });
+      var up = Object.keys(by).sort().map(function (b) { return { brand: b, free: b in was ? was[b] : FREE_BRANDS.indexOf(b) !== -1, paints: by[b] }; });
+      for (var i = 0; i < up.length; i += 8) {
+        out.textContent = 'Saving brands ' + (i + 1) + '–' + Math.min(i + 8, up.length) + ' of ' + up.length + '…';
+        check(await sb.from('catalog_brands').upsert(up.slice(i, i + 8)));
+      }
+      await loadShop();
+      renderShop();
+      document.getElementById('pubmsg').textContent = '✅ Published ' + up.length + ' brands, ' + list.length + ' paints.';
+    } catch (e) {
+      btn.disabled = false;
+      out.textContent = '⚠️ ' + (e && e.message || e);
+    }
+  }
+
+  async function shopStart() {
+    await ready;
+    if (!document.getElementById('shop')) {
+      var at = document.getElementById('imp') || document.getElementById('acct');
+      if (!at) return;
+      at.insertAdjacentHTML('afterend', '<div id="shop"></div>');
+    }
+    var paid = (location.search.match(/[?&]paid=(\w+)/) || [])[1];
+    if (paid) { try { history.replaceState(null, '', location.pathname); } catch (e) {} }
+    if (offlineUser || !navigator.onLine) return;
+    try { await loadShop(); } catch (e) { return; }
+    renderShop();
+    if (paid === 'cancelled') toast('Payment cancelled. Nothing was charged.', 4000);
+    else if (paid) {
+      toast('Thank you! Unlocking your paints…', 4000);
+      // Stripe tells the database a moment after the payment page closes, so look a few times.
+      for (var n = 0; n < 10; n++) {
+        if (await refreshShop()) { toast('✅ Unlocked. Enjoy your paints!', 4000); return; }
+        await new Promise(function (res) { setTimeout(res, 3000); });
+      }
+      toast('Your payment went through. If something is still locked, tap Restore purchases in a minute.', 6000);
+    }
+  }
+
   // ---------- The app shell: offline helper, self-update, error box, version line ----------
   if ('serviceWorker' in navigator) window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js'); });
 
@@ -791,6 +958,7 @@
     if (pout) pout.insertAdjacentHTML('afterend', tag);
     if (session) showAccount();
     importCard();
+    shopStart();
   });
 })();
 
@@ -1182,29 +1350,43 @@
   // ---------- Paint catalog ----------
   // Pro Acryl lineup (code|range|name), from monumenthobbies.com
   var PRO = "001|Pro Acryl|Bold Titanium White;002|Pro Acryl|Coal Black;003|Pro Acryl|Bold Pyrrole Red;004|Pro Acryl|Green;005|Pro Acryl|Blue;006|Pro Acryl|Golden Yellow;007|Pro Acryl|Orange;008|Pro Acryl|Burnt Red;009|Pro Acryl|Mahogany;010|Pro Acryl|Purple;011|Pro Acryl|Magenta;012|Pro Acryl|Sky Blue;013|Pro Acryl|Faded Ultramarine;014|Pro Acryl|Dark Grey Blue;015|Pro Acryl|Bright Warm Grey;016|Pro Acryl|Dark Warm Grey;017|Pro Acryl|Golden Brown;018|Pro Acryl|Light Umber;019|Pro Acryl|Dark Umber;020|Pro Acryl|Camo Green;021|Pro Acryl|Jade;022|Pro Acryl|Bright Ivory;023|Pro Acryl|Ivory;024|Pro Acryl|Tan Flesh;025|Pro Acryl|Silver;026|Pro Acryl|Light Bronze;027|Pro Acryl|Copper;028|Pro Acryl|Rich Gold;029|Pro Acryl|White Gold;030|Pro Acryl|Dark Silver;031|Pro Acryl|Bright Gold;032|Pro Acryl|Bronze;033|Pro Acryl|Metallic Medium;034|Pro Acryl|Dark Blue;035|Pro Acryl|Dark Purple;036|Pro Acryl|Dark Camo Green;037|Pro Acryl|Burnt Orange;038|Pro Acryl|Yellow Ochre;039|Pro Acryl|Bright Yellow Green;040|Pro Acryl|Black Brown;041|Pro Acryl|Olive Flesh;042|Pro Acryl|Shadow Flesh;043|Pro Acryl|Pale Pink;044|Pro Acryl|Dark Neutral Grey;045|Pro Acryl|Bright Neutral Grey;046|Pro Acryl|Transparent Blue;047|Pro Acryl|Transparent Red;048|Pro Acryl|Transparent Green;049|Pro Acryl|Transparent Yellow;050|Pro Acryl|Transparent Orange;051|Pro Acryl|Transparent Purple;052|Pro Acryl|Transparent Brown;053|Pro Acryl|Transparent Black;054|Pro Acryl|Turquoise;055|Pro Acryl|Grey Blue;056|Pro Acryl|Blue Black;057|Pro Acryl|Black Green;058|Pro Acryl|Bright Pale Green;059|Pro Acryl|Burnt Sienna;060|Pro Acryl|Pale Yellow;061|Pro Acryl|Khaki;062|Pro Acryl|Dark Golden Brown;063|Pro Acryl|Faded Plum;064|Pro Acryl|Transparent White;065|Pro Acryl|Yellow Green;066|Pro Acryl|Faded Green;067|Pro Acryl|Bright Jade;068|Pro Acryl|Dark Flesh;069|Pro Acryl|Burgundy;070|Pro Acryl|Plum;071|Pro Acryl|Pink;072|Pro Acryl|Warm Yellow;073|Pro Acryl|Warm Flesh;074|Pro Acryl|Warm Grey;075|Pro Acryl|Neutral Grey;200|Wash|Black Wash;201|Wash|Brown Wash;202|Wash|Flesh Wash;AMP002|AMP Colors|Cool Grey;AMP004|AMP Colors|Black Red;AMP005|AMP Colors|Dark Navy Blue;AMP006|AMP Colors|Beige Grey;AMP007|AMP Colors|Orange Yellow;AMP008|AMP Colors|Peach Flesh;AMP009|AMP Colors|Bright Green Blue;AMP010|AMP Colors|Steel;AMP011|AMP Colors|Magenta Wash;AMP012|AMP Colors|Petroleum Brown Wash;AMP013|AMP Colors|Slate Grey;AMP017|AMP Colors|Red Orange;AMP018|AMP Colors|Burnt Umber;AMP020|AMP Colors|Green Brown;AMP021|AMP Colors|Bright Brown Grey;AMP022|AMP Colors|Grey Green;AMP023|AMP Colors|Brown Grey Wash;AMP024|AMP Colors|Payne's Grey Wash;E001|Expert Acrylics|Titanium White;E002|Expert Acrylics|Carbon Black;E003|Expert Acrylics|Pyrrole Red;E004|Expert Acrylics|Permanent Green Light;E005|Expert Acrylics|Prussian Blue;E006|Expert Acrylics|Pyrrole Orange;E007|Expert Acrylics|Burnt Umber;E008|Expert Acrylics|Dioxazine Violet;E009|Expert Acrylics|Sap Green;E010|Expert Acrylics|Burnt Sienna;E011|Expert Acrylics|Nickel Azo Yellow;E012|Expert Acrylics|Sepia;E013|Expert Acrylics|Payne's Grey;E014|Expert Acrylics|Primary Cyan;E015|Expert Acrylics|Primary Magenta;E016|Expert Acrylics|Primary Yellow;E017|Expert Acrylics|Chrome Oxide Green;E018|Expert Acrylics|Red Oxide Tint;E019|Expert Acrylics|Phthalo Turquoise Light;E020|Expert Acrylics|Quinacridone Magenta;E021|Expert Acrylics|Arylide Yellow Deep;E022|Expert Acrylics|Alizarin Crimson Hue;F01|Fluorescent|Fluorescent Red;F02|Fluorescent|Fluorescent Orange;F03|Fluorescent|Fluorescent Yellow;F04|Fluorescent|Fluorescent Green;F05|Fluorescent|Fluorescent Purple;F06|Fluorescent|Fluorescent Pink;500|1-Step|Blue;501|1-Step|Royal Purple;502|1-Step|Crimson;503|1-Step|Dark Blue Black;504|1-Step|Warm Yellow;505|1-Step|Dark Green;506|1-Step|Shadow Flesh;507|1-Step|Graphite Green;508|1-Step|Graphite Grey;509|1-Step|Dark Green Brown;510|1-Step|Warm Brown;511|1-Step|Orange;512|1-Step|Rust;513|1-Step|Scarlet Red;514|1-Step|Olive Yellow;515|1-Step|Dark Purple;516|1-Step|Dark Brown;517|1-Step|Dark Green Blue;518|1-Step|Bright Slate Grey;519|1-Step|Yellow Green;520|1-Step|Deep Blue;521|1-Step|Bronze Yellow;522|1-Step|Dark Turquoise;523|1-Step|Black;S01|Signature|Vince Venturella Dark Jade;S02|Signature|Vince Venturella Payne's Grey;S03|Signature|Vince Venturella Royal Purple;S04|Signature|Vince Venturella White Blue;S05|Signature|Vince Venturella Beige Red;S06|Signature|Vince Venturella Dark Yellow Green;S07|Signature|Ninjon Dark Ivory;S08|Signature|Ninjon Dark Warm Flesh;S09|Signature|Ninjon Warm Brown;S10|Signature|Ninjon Dark Magenta;S11|Signature|Ninjon Dark Plum;S12|Signature|Ninjon Red Grey;S13|Signature|Ben Komets Dark Sea Ben;S14|Signature|Ben Komets Petroleum Brown;S15|Signature|Ben Komets Dark Burgundy;S16|Signature|Ben Komets Green Oxide;S17|Signature|Ben Komets Advanced Flesh Tone;S18|Signature|Ben Komets Heavy Warm White;S19|Signature|Matt Cexwish Dark Crimson;S20|Signature|Matt Cexwish Dark Emerald;S21|Signature|Matt Cexwish Heavy Titanium White;S22|Signature|Matt Cexwish Brown Grey;S23|Signature|Matt Cexwish Bone;S24|Signature|Matt Cexwish Dark Bronze;S25|Signature|Flameon Dark Green Brown;S26|Signature|Flameon Dark Orange Brown;S27|Signature|Flameon Orange Brown;S28|Signature|Flameon Caramel Brown;S29|Signature|Flameon Bright Yellow Ochre;S30|Signature|Flameon Bright Pale Yellow;S31|Signature|Rogue Hobbies Orange Red;S32|Signature|Rogue Hobbies Dark Hot Pink;S33|Signature|Rogue Hobbies Bright Green;S34|Signature|Rogue Hobbies Dark Turquoise;S35|Signature|Rogue Hobbies Ultramarine;S36|Signature|Rogue Hobbies Bismuth Yellow;S37|Signature|Adepticon Red Oxide;S38|Signature|Adepticon Orange Oxide;S39|Signature|Adepticon Satin Black;S40|Signature|Adepticon Drab Brown;S41|Signature|Adepticon Bright Shadow Flesh;S42|Signature|Adepticon Magnesium;S49|Signature|NOVA Orange";
-  var CATALOG = PRO.split(';').map(function (s) { var p = s.split('|'); return { brand: 'Pro Acryl', code: p[0], range: p[1], name: p[2], hex: '' }; });
+  var CATALOG = [];
 
   // Citadel, Army Painter and Vallejo lists from github.com/Arcturus5404/miniature-paints
   var LISTS = [['Citadel', 'Citadel_Colour'], ['The Army Painter', 'Army_Painter'], ['Vallejo', 'Vallejo']];
-  var catalogReady = Promise.all(LISTS.map(function (l) {
-    return fetch('https://raw.githubusercontent.com/Arcturus5404/miniature-paints/main/paints/' + l[1] + '.md')
-      .then(function (r) { return r.text(); })
-      .then(function (t) { parseList(l[0], t); })
-      .catch(function () { /* list unavailable: Pro Acryl still works */ });
-  }).concat(proColours(), extraPaints())).then(function () { BUILT_IN = CATALOG.length; return loadMine(); });
+
+  // The built-in paint lists, gathered from the public files into the list "into".
+  function publicLists(into) {
+    PRO.split(';').forEach(function (s) { var p = s.split('|'); into.push({ brand: 'Pro Acryl', code: p[0], range: p[1], name: p[2], hex: '' }); });
+    return Promise.all(LISTS.map(function (l) {
+      return fetch('https://raw.githubusercontent.com/Arcturus5404/miniature-paints/main/paints/' + l[1] + '.md')
+        .then(function (r) { return r.text(); })
+        .then(function (t) { parseList(l[0], t, into); })
+        .catch(function () { /* list unavailable: Pro Acryl still works */ });
+    }).concat(proColours(into), extraPaints(into))).then(function () { return into; });
+  }
+  // The account version can hand over the lists from its database instead (window.pcCatalog); if that gives nothing
+  // (not set up yet, or unreachable), the public files are used.
+  var catalogReady = (window.pcCatalog
+    ? window.pcCatalog().then(function (list) {
+        if (list && list.length) list.forEach(function (p) { CATALOG.push({ brand: p.brand, code: p.code || '', range: p.range || '', name: p.name, hex: p.hex || '' }); });
+        else return publicLists(CATALOG);
+      }, function () { return publicLists(CATALOG); })
+    : publicLists(CATALOG)).then(function () { BUILT_IN = CATALOG.length; return loadMine(); });
+  window.pcPublicCatalog = function () { return publicLists([]); }; // for the owner's "publish the paint lists" button
 
   // Brands the community list doesn't have (Kaleido Colorworks…), built into the app as extra-paints.json.
-  function extraPaints() {
+  function extraPaints(into) {
     return fetch('extra-paints.json').then(function (r) { return r.ok ? r.json() : { paints: [] }; })
       .then(function (d) {
-        (d.paints || []).forEach(function (p) { CATALOG.push({ brand: p.brand, code: p.code || '', range: p.range || '', name: p.name, hex: p.hex || '' }); });
+        (d.paints || []).forEach(function (p) { into.push({ brand: p.brand, code: p.code || '', range: p.range || '', name: p.name, hex: p.hex || '' }); });
       })
       .catch(function () { /* not available (e.g. on the Google page): the other lists still work */ });
   }
   catalogReady.then(function () { knownBarcode(''); }); // download the barcode list early, so the first scan is quick
 
   // Real colours for Pro Acryl paints, matched by bottle number, where the community list has them.
-  function proColours() {
+  function proColours(into) {
     return fetch('https://raw.githubusercontent.com/Arcturus5404/miniature-paints/main/paints/Monument.md')
       .then(function (r) { return r.text(); })
       .then(function (t) {
@@ -1213,7 +1395,7 @@
           var c = line.split('|'), m = line.match(/#[0-9A-Fa-f]{6}/);
           if (c.length > 3 && m && !hex[c[2].trim()]) hex[c[2].trim()] = m[0];
         });
-        CATALOG.forEach(function (p) { if (p.brand === 'Pro Acryl' && !p.hex && hex[p.code]) p.hex = hex[p.code]; });
+        into.forEach(function (p) { if (p.brand === 'Pro Acryl' && !p.hex && hex[p.code]) p.hex = hex[p.code]; });
       })
       .catch(function () { /* no colours: swatches fall back to name-based guesses */ });
   }
@@ -1292,7 +1474,8 @@
     h.innerHTML = 'I don\'t have a paint list for ' + esc(b) + ' yet. <a href="#" style="color:#93c5fd" onclick="openBrandBox(el(\'fbrand\').value);return false">Add the brand</a> so its paints get recognised.';
   }
 
-  function parseList(brand, text) {
+  function parseList(brand, text, into) {
+    into = into || CATALOG;
     var cols = null;
     text.split('\n').forEach(function (line) {
       line = line.trim();
@@ -1301,7 +1484,7 @@
       if (!cols) { cols = c; return; }
       if (/^-+$/.test(c[0])) return;
       var code = cols.indexOf('Code') >= 0 ? c[cols.indexOf('Code')] : '';
-      CATALOG.push({
+      into.push({
         brand: brand,
         code: code === 'null' ? '' : code,
         range: (c[cols.indexOf('Set')] || '').replace(/ Set\b/, ''),
