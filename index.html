@@ -18,7 +18,7 @@
 // the signed-in person's rows in the Supabase database instead of a Google Sheet.
 // The database's own rules (Row Level Security) are what keep each person's data private; this file only asks.
 (function () {
-  var SB_URL = 'https://ewgbdtkeaoguwayymtay.supabase.co', SB_KEY = 'sb_publishable_md1uOYqL25oZVSb-AknbOg_gfpV7TMH', VERSION = '555a804d57';
+  var SB_URL = 'https://ewgbdtkeaoguwayymtay.supabase.co', SB_KEY = 'sb_publishable_md1uOYqL25oZVSb-AknbOg_gfpV7TMH', VERSION = '65138dcac1';
   var sb = window.supabase.createClient(SB_URL, SB_KEY, {
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, storageKey: 'pc-auth' }
   });
@@ -946,6 +946,8 @@
     .harm svg { flex: none; }
     .harm .hname { font-weight: 800; font-size: 15px; }
     .hitem { display: flex; align-items: center; gap: 8px; margin-top: 7px; font-size: 14px; }
+    .tap { cursor: pointer; }
+    .tap:hover, .tap:focus-visible { outline: 2px solid var(--muted, #8e95a2); outline-offset: 2px; border-radius: var(--radius); }
     .tsw { flex: none; width: 14px; height: 14px; border-radius: 4px; outline: 1px dashed #ffffff88; outline-offset: 1px; }
     .wheelwrap { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start; margin-top: 12px; }
     #wheelbox { flex: 0 1 380px; width: 100%; max-width: 380px; margin: 0 auto; }
@@ -2640,6 +2642,21 @@
     return parts.join(' · ');
   }
 
+  // Finishes a class="…" attribute: one of your paints becomes tappable, opening that paint's own colour help.
+  function tapAttrs(p) {
+    return p && p.row ? ' tap" role="button" tabindex="0" title="Open this paint" onclick="colourJump(' + p.row + ')"' +
+      ' onkeydown="if (event.key === \'Enter\') colourJump(' + p.row + ')"' : '"';
+  }
+  function colourJump(row) {
+    var p = (INV || []).filter(function (x) { return x.row === row; })[0];
+    if (!p) return;
+    var d = el('pdetail');
+    if (d && !d.hidden) { paintDetail(row); return; } // already on a paint's page in My paints: stay there
+    el('hq').value = p.name;
+    hlShow(p);
+    el('hq').scrollIntoView({ behavior: 'smooth' });
+  }
+
   // kind: 'hl' = edge highlight on the top/left edges, 'shade' = shade in the bottom/right recess, 'glaze' = tint over the base.
   function hlRow(base, p, s, kind, reason) {
     var r = rating(s), prev = kind === 'shade'
@@ -2647,7 +2664,7 @@
       : kind === 'glaze'
         ? 'background:linear-gradient(' + p.hex + '88,' + p.hex + '88),' + base.hex
         : 'background:' + base.hex + ';box-shadow:inset 0 6px 0 ' + p.hex + ',inset 6px 0 0 ' + p.hex;
-    return '<div class="hlrow">' +
+    return '<div class="hlrow' + tapAttrs(p) + '>' +
       '<div class="prev" style="' + prev + '"></div>' +
       '<div class="grow"><div class="nm">' + esc(p.name) + '</div>' +
         '<div class="meta">' + esc([p.brand, p.range].filter(Boolean).join(' · ')) + '</div>' +
@@ -2777,7 +2794,7 @@
         '<div class="muted">' + hm[2] + '</div>' +
         hm[1].map(function (off) {
           var t = (h0 + off + 360) % 360, p = bestForHue(t, base);
-          return '<div class="hitem"><span class="tsw" style="background:hsl(' + Math.round(fromRyb(t)) + ',65%,50%)" title="Colour on the wheel"></span>' +
+          return '<div class="hitem' + tapAttrs(p) + '><span class="tsw" style="background:hsl(' + Math.round(fromRyb(t)) + ',65%,50%)" title="Colour on the wheel"></span>' +
             (p ? '<span class="sw" style="background:' + p.hex + '"></span><span><b>' + esc(p.name) + '</b> <span class="muted">' + esc(p.brand) + '</span></span>'
                : '<span class="muted">None of your paints is near this colour</span>') + '</div>';
         }).join('') + '</div></div>';
