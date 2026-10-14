@@ -18,7 +18,7 @@
 // the signed-in person's rows in the Supabase database instead of a Google Sheet.
 // The database's own rules (Row Level Security) are what keep each person's data private; this file only asks.
 (function () {
-  var SB_URL = 'https://ewgbdtkeaoguwayymtay.supabase.co', SB_KEY = 'sb_publishable_md1uOYqL25oZVSb-AknbOg_gfpV7TMH', VERSION = 'c00ab7a796';
+  var SB_URL = 'https://ewgbdtkeaoguwayymtay.supabase.co', SB_KEY = 'sb_publishable_md1uOYqL25oZVSb-AknbOg_gfpV7TMH', VERSION = '813079b823';
   var sb = window.supabase.createClient(SB_URL, SB_KEY, {
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, storageKey: 'pc-auth' }
   });
@@ -810,6 +810,36 @@
     SHOP.loaded = true;
   }
 
+  // Opens Stripe's payment page (or the manage-subscription page). Problems are written into msg, or shown as a toast.
+  function buy(action, brand, btn, msg) {
+    var say = function (t) { if (msg) msg.textContent = t; else toast(t, 5000); };
+    if (offlineUser || !navigator.onLine) { say('You need a connection to buy.'); return; }
+    btn.disabled = true;
+    var was = btn.textContent;
+    btn.textContent = 'Opening the payment page…';
+    sb.functions.invoke('billing', { body: { action: action, brand: brand || '' } }).then(async function (r) {
+      if (r.data && r.data.url) { location.href = r.data.url; return; }
+      var why = r.data && r.data.error;
+      if (!why && r.error) { try { why = (await r.error.context.json()).error; } catch (e) { why = r.error.message; } }
+      btn.disabled = false; btn.textContent = was; say('⚠️ ' + (why || 'Couldn\'t open the payment page.'));
+    });
+  }
+  window.pcBuy = function (action, brand, btn) { buy(action, brand, btn, null); };
+
+  // The brand's name if its paint list is for sale and this person hasn't got it ('' otherwise). Used by the add form
+  // and the barcode scanner, which then say so instead of filling the paint in.
+  window.pcLocked = function (b) {
+    b = String(b || '').toLowerCase().replace(/^the\s+/, '').trim();
+    if (!b || !SHOP.loaded || !SHOP.paywall || SHOP.sub) return '';
+    var name = function (x) { return x.brand.toLowerCase().replace(/^the\s+/, ''); };
+    var hit = SHOP.index.filter(function (x) { return name(x) === b; })[0] ||
+      SHOP.index.filter(function (x) { return b.length >= 4 && (b.indexOf(name(x)) === 0 || name(x).indexOf(b) === 0); })[0];
+    return hit && !hit.free && !SHOP.owned[hit.brand] ? hit.brand : '';
+  };
+
+  // Barcode scanning (beta) comes with All brands (a subscription or free access). Everyone has it while payments are off.
+  window.pcCanScan = function () { return !SHOP.loaded || !SHOP.paywall || !!SHOP.sub || SHOP.admin; };
+
   function shopBtn(id, label, ghost) {
     return '<button type="button" id="' + id + '" class="' + (ghost ? 'ghost' : '') + '" style="margin-top:8px">' + label + '</button>';
   }
@@ -854,18 +884,7 @@
     box.innerHTML = h + '</div>';
 
     var msg = document.getElementById('shopmsg');
-    function go(action, brand, btn) {
-      if (offlineUser || !navigator.onLine) { msg.textContent = 'You need a connection to buy.'; return; }
-      btn.disabled = true;
-      var was = btn.textContent;
-      btn.textContent = 'Opening the payment page…';
-      sb.functions.invoke('billing', { body: { action: action, brand: brand || '' } }).then(async function (r) {
-        if (r.data && r.data.url) { location.href = r.data.url; return; }
-        var why = r.data && r.data.error;
-        if (!why && r.error) { try { why = (await r.error.context.json()).error; } catch (e) { why = r.error.message; } }
-        btn.disabled = false; btn.textContent = was; msg.textContent = '⚠️ ' + (why || 'Couldn\'t open the payment page.');
-      });
-    }
+    function go(action, brand, btn) { buy(action, brand, btn, msg); }
     var all = document.getElementById('shopall');
     if (all) all.onclick = function () { go('all', '', all); };
     var manage = document.getElementById('shopmanage');
@@ -1001,6 +1020,13 @@
     if (session) showAccount();
     importCard();
     shopStart();
+    // "Manage paint brands" (add a brand from the community list, or read a shop's website) belongs to the Google Sheet
+    // version; here brands come built in, and locked ones are unlocked from the Paint brands card.
+    var bb = document.getElementById('brandbox');
+    if (bb) bb.hidden = true;
+    // Barcode scanning is a beta feature here.
+    var scanLabel = document.querySelector('label.scan .sub');
+    if (scanLabel) scanLabel.insertAdjacentHTML('beforebegin', ' <span class="badge b-ok" style="font-size:11px;padding:2px 8px;vertical-align:middle">Beta</span>');
   });
 })();
 
@@ -1513,7 +1539,15 @@
     var h = el('brandhint');
     if (!h) return;
     if (!b.trim() || knownBrand(b)) { h.innerHTML = ''; return; }
+    // The account version: a brand whose list is for sale says so (typing it in by hand still works).
+    var locked = window.pcLocked ? window.pcLocked(b) : '';
+    if (locked) { h.innerHTML = lockedNote(locked, 'Or carry on filling it in by hand.'); return; }
+    if (window.pcCloud) { h.innerHTML = ''; return; } // no list for this brand: just fill it in by hand
     h.innerHTML = 'I don\'t have a paint list for ' + esc(b) + ' yet. <a href="#" style="color:#93c5fd" onclick="openBrandBox(el(\'fbrand\').value);return false">Add the brand</a> so its paints get recognised.';
+  }
+  function lockedNote(brand, after) {
+    return '🔒 ' + esc(brand) + '\'s paint list is locked. Unlock it to fill its paints in automatically, with their real colours. ' +
+      '<button type="button" class="ghost" style="margin:6px 0" onclick="pcBuy(\'brand\', ' + esc(JSON.stringify(brand)) + ', this)">Unlock ' + esc(brand) + ' for 99¢</button> ' + esc(after || '');
   }
 
   function parseList(brand, text, into) {
@@ -2108,7 +2142,17 @@
       openCam(c[0], c[1], c[2]);
     });
   });
+  // The account version can keep barcode scanning for subscribers (window.pcCanScan); others are told how to get it.
+  function scanAllowed() { return !window.pcCanScan || window.pcCanScan(); }
+  function scanLocked() {
+    show('<div class="card"><div class="big">📷 Barcode scanning <span class="badge b-ok">Beta</span></div>' +
+      '<div class="muted" style="margin:6px 0">Scanning comes with <b>All brands</b> ($2.99 a month): point the camera at a bottle to see in a second ' +
+      'whether you already own it, and fill in new paints automatically.</div>' +
+      '<button type="button" onclick="pcBuy(\'all\', \'\', this)">🔓 Get All brands: $2.99 a month</button>' +
+      '<div class="muted" style="margin-top:8px">Or type the paint\'s name or number in the box above.</div></div>');
+  }
   document.querySelector('label.scan').addEventListener('click', function (e) {
+    if (!scanAllowed()) { e.preventDefault(); scanLocked(); return; }
     if (!liveOk() || e.target === el('photo')) return;
     e.preventDefault();
     liveStart();
@@ -2120,6 +2164,7 @@
     lastFile = file || null;
     // Typed text that isn't a barcode number (e.g. "MPA-013", "S21", "70.950", "mephiston") is a code/name search.
     if (!file && !/^\d{6,14}$/.test(code.replace(/[\s-]/g, ''))) return codeSearch(code);
+    if (!scanAllowed()) return scanLocked(); // a barcode number, typed or photographed
     show('<div class="card">Checking…</div>');
     // Fast path, on the phone itself: your paints' saved barcodes, then the built-in paint barcode list.
     // Only a barcode neither knows goes to your Google script (which also asks the online barcode databases).
@@ -2169,6 +2214,9 @@
         .withFailureHandler(function () {}).linkBarcode(mine.row, code);
       return render({ found: true, paint: mine });
     }
+    // A brand whose list is locked (account version, not bought yet): say what it is, but don't fill it in.
+    var locked = window.pcLocked ? window.pcLocked(hit[0]) : '';
+    if (locked) return render({ found: false, code: code, locked: locked });
     // Not yours: fill in the add form, using the app's own paint list entry (its range names and colour) when there is one.
     var name = looseName(stripCode(hit[2]));
     var cat = CATALOG.filter(function (c) { return c.brand && sameBrand(c.brand, hit[0]) && !!hit[3] && !!c.code && codeKey(c.code) === codeKey(hit[3]); });
@@ -2420,7 +2468,9 @@
       return;
     }
     var g = res.guess || {};
-    show((res.manual ? '<div class="card"><div class="big">✍️ Add a paint</div>' +
+    show((res.locked ? '<div class="card no"><div class="big">❌ Not in your collection</div>' +
+        '<div class="muted">This is a <b>' + esc(res.locked) + '</b> paint.</div><div class="hint">' + lockedNote(res.locked, 'Or fill it in yourself below.') + '</div>'
+      : res.manual ? '<div class="card"><div class="big">✍️ Add a paint</div>' +
         '<div class="muted">Pick it from the paint list, or fill in the boxes yourself. Not listed? Choose “Add my own” under Brand or Range.</div>'
       : res.known ? '<div class="card no"><div class="big">❌ Not in your collection</div>' +
         '<div class="muted">This is <b>' + esc(res.known) + '</b>. Bought it? Add it:</div>'
@@ -2430,7 +2480,7 @@
       : '<div class="card no"><div class="big">❌ Not in your collection</div>' +
         '<div class="muted">Bought it? Add it:</div>') +
       (g.title ? '<div class="hint">✨ Filled in from the barcode database: “' + esc(g.title) + '” — check it before saving.</div>' : '') +
-      (res.code && !res.known ? '<div id="ownpick"></div>' : '') +
+      (res.code && !res.known && !res.locked ? '<div id="ownpick"></div>' : '') +
       '<div class="hint" id="labelhint"></div>' +
       '<div id="labelpicks"></div>' +
       '<div class="hint">Or find it in the paint list:</div>' +
@@ -3388,6 +3438,7 @@
   }
   // Scan a bottle's barcode and save it on this paint, so scanning it later finds it straight away.
   function scanFor(row) {
+    if (!scanAllowed()) { el('dmsg').innerHTML = '📷 Barcode scanning (beta) comes with All brands, $2.99 a month. <button type="button" class="ghost" onclick="pcBuy(\'all\', \'\', this)">Get All brands</button>'; return; }
     if (!liveOk()) { el('dmsg').textContent = 'Barcode scanning needs the installed app (or Chrome), not the Google page.'; return; }
     liveStart(function (code) {
       if (!code) { el('dmsg').textContent = 'The camera didn\'t start. Allow the camera for this app and try again.'; return; }
