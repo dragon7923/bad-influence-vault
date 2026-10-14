@@ -18,7 +18,7 @@
 // the signed-in person's rows in the Supabase database instead of a Google Sheet.
 // The database's own rules (Row Level Security) are what keep each person's data private; this file only asks.
 (function () {
-  var SB_URL = 'https://ewgbdtkeaoguwayymtay.supabase.co', SB_KEY = 'sb_publishable_md1uOYqL25oZVSb-AknbOg_gfpV7TMH', VERSION = '65138dcac1';
+  var SB_URL = 'https://ewgbdtkeaoguwayymtay.supabase.co', SB_KEY = 'sb_publishable_md1uOYqL25oZVSb-AknbOg_gfpV7TMH', VERSION = '780279df97';
   var sb = window.supabase.createClient(SB_URL, SB_KEY, {
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, storageKey: 'pc-auth' }
   });
@@ -495,6 +495,11 @@
       var cur = await paintByRow(row);
       await write({ t: 'paints', k: 'qty', id: cur.id, delta: delta });
       return (paintById(cur.id) || cur).qty;
+    },
+
+    deletePaint: async function (row) {
+      await write({ t: 'paints', k: 'del', id: paintH.id(row) });
+      return true;
     },
 
     linkBarcode: async function (row, code) {
@@ -3129,7 +3134,8 @@
       wishBtn(p, 'Running low', '🛒 Running low') +
       '<div class="row"><button type="button" class="ghost" onclick="scanFor(' + row + ')">📷 ' +
         (String(p.barcode || '').replace(/\D/g, '').length >= 6 ? 'Barcode saved ✓ · scan another bottle' : 'Scan its barcode') + '</button></div>' +
-      '<div class="hint" id="dmsg"></div>';
+      '<div class="hint" id="dmsg"></div>' +
+      (window.pcCloud ? '<div class="row"><button type="button" class="ghost delpaint" onclick="deletePaint(' + row + ', this)">🗑 Delete this paint</button></div>' : '');
     box.innerHTML = '<div class="inner"><div class="row" style="margin-top:0"><button class="ghost" onclick="closeDetail()">← Back</button></div>' +
       colourHelpHtml(p, manage) + '</div>';
     box.hidden = false;
@@ -3154,6 +3160,30 @@
         el('dmsg').textContent = '🔗 Barcode saved. Scanning this bottle now finds it straight away.';
       }).withFailureHandler(function (e) { el('dmsg').textContent = 'Error: ' + (e && e.message || e); }).linkBarcode(row, code);
     });
+  }
+
+  // Removes a paint from your list altogether (for mistakes and duplicates; "Used up" keeps it as a paint you once had).
+  // First tap asks, second tap deletes.
+  function deletePaint(row, btn) {
+    if (!btn.dataset.sure) {
+      btn.dataset.sure = '1';
+      btn.textContent = '⚠️ Tap again to delete it for good';
+      setTimeout(function () { if (btn.isConnected && !btn.disabled) { delete btn.dataset.sure; btn.textContent = '🗑 Delete this paint'; } }, 5000);
+      return;
+    }
+    btn.disabled = true;
+    btn.textContent = 'Deleting…';
+    google.script.run.withSuccessHandler(function () {
+      INV = (INV || []).filter(function (p) { return p.row !== row; });
+      var card = el('pc' + row);
+      if (card) card.remove();
+      closeDetail();
+      if (typeof renderInv === 'function' && !el('inv').hidden) renderInv();
+    }).withFailureHandler(function (e) {
+      btn.disabled = false; delete btn.dataset.sure;
+      btn.textContent = '🗑 Delete this paint';
+      el('dmsg').textContent = '⚠️ ' + (e && e.message || e);
+    }).deletePaint(row);
   }
 
   function closeDetail() {
