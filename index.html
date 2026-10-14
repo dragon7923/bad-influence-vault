@@ -18,7 +18,7 @@
 // the signed-in person's rows in the Supabase database instead of a Google Sheet.
 // The database's own rules (Row Level Security) are what keep each person's data private; this file only asks.
 (function () {
-  var SB_URL = 'https://ewgbdtkeaoguwayymtay.supabase.co', SB_KEY = 'sb_publishable_md1uOYqL25oZVSb-AknbOg_gfpV7TMH', VERSION = '431bf0a69b';
+  var SB_URL = 'https://ewgbdtkeaoguwayymtay.supabase.co', SB_KEY = 'sb_publishable_md1uOYqL25oZVSb-AknbOg_gfpV7TMH', VERSION = 'b13f635001';
   var sb = window.supabase.createClient(SB_URL, SB_KEY, {
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, storageKey: 'pc-auth' }
   });
@@ -793,6 +793,23 @@
     return all;
   };
 
+  // Files kept in the private 'catalog' storage bucket (supabase/010_private_lists.sql), kept on the device once read.
+  async function privateFile(name, owner) {
+    await ready;
+    var key = location.origin + '/__pc-file-' + name + '-' + uid();
+    var cache = window.caches ? await caches.open('pc-catalog').catch(function () { return null; }) : null;
+    var saved = cache ? await cache.match(key).then(function (r) { return r ? r.json() : null; }).catch(function () { return null; }) : null;
+    if (offlineUser || !navigator.onLine) return saved;
+    var r = await sb.storage.from('catalog').download(name);
+    if (r.error) return owner ? Promise.reject(new Error('Couldn\'t read ' + name + ': ' + r.error.message)) : saved;
+    var data = JSON.parse(await r.data.text());
+    if (cache) cache.put(key, new Response(JSON.stringify(data))).catch(function () {});
+    return data;
+  }
+  // The barcode list: readable by people who may scan. The full paint lists: the owner only (for publishing).
+  window.pcBarcodes = function () { return privateFile('barcodes.json').then(function (d) { return d || { codes: {} }; }, function () { return { codes: {} }; }); };
+  window.pcExtraPaints = function () { return privateFile('extra-paints.json', true); };
+
   async function loadShop() {
     var r = await Promise.all([sb.rpc('catalog_index'), sb.from('app_settings').select('key, value'),
       sb.from('subscriptions').select('status, expires_at, source, cancels'), sb.from('brand_purchases').select('brand'), sb.rpc('is_admin'),
@@ -1447,7 +1464,8 @@
 
   // Brands the community list doesn't have (Kaleido Colorworks…), built into the app as extra-paints.json.
   function extraPaints(into) {
-    return fetch('extra-paints.json').then(function (r) { return r.ok ? r.json() : { paints: [] }; })
+    // (the account version keeps this file in private storage: window.pcExtraPaints)
+    return (window.pcExtraPaints ? window.pcExtraPaints() : fetch('extra-paints.json').then(function (r) { return r.ok ? r.json() : { paints: [] }; }))
       .then(function (d) {
         (d.paints || []).forEach(function (p) { into.push({ brand: p.brand, code: p.code || '', range: p.range || '', name: p.name, hex: p.hex || '' }); });
       })
@@ -2186,7 +2204,8 @@
   // ---------- The built-in paint barcode list (barcodes.json, from the WarHub paint catalog) ----------
   var BARCODES = null;
   function knownBarcode(code) {
-    if (!BARCODES) BARCODES = fetch('barcodes.json').then(function (r) { return r.ok ? r.json() : { codes: {} }; })
+    // (the account version keeps this list in private storage, for people who may scan: window.pcBarcodes)
+    if (!BARCODES) BARCODES = (window.pcBarcodes ? window.pcBarcodes() : fetch('barcodes.json').then(function (r) { return r.ok ? r.json() : { codes: {} }; }))
       .catch(function () { BARCODES = null; return { codes: {} }; });
     var d = String(code).replace(/\D/g, '').replace(/^0+/, '');
     return BARCODES.then(function (db) { return (db.codes || {})[d] || null; });
