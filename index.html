@@ -18,7 +18,7 @@
 // the signed-in person's rows in the Supabase database instead of a Google Sheet.
 // The database's own rules (Row Level Security) are what keep each person's data private; this file only asks.
 (function () {
-  var SB_URL = 'https://ewgbdtkeaoguwayymtay.supabase.co', SB_KEY = 'sb_publishable_md1uOYqL25oZVSb-AknbOg_gfpV7TMH', VERSION = '9d3020b70f';
+  var SB_URL = 'https://ewgbdtkeaoguwayymtay.supabase.co', SB_KEY = 'sb_publishable_md1uOYqL25oZVSb-AknbOg_gfpV7TMH', VERSION = 'd18a1fbfb9';
   var sb = window.supabase.createClient(SB_URL, SB_KEY, {
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, storageKey: 'pc-auth' }
   });
@@ -812,7 +812,7 @@
 
   async function loadShop() {
     var r = await Promise.all([sb.rpc('catalog_index'), sb.from('app_settings').select('key, value'),
-      sb.from('subscriptions').select('status, expires_at, source, cancels'), sb.from('brand_purchases').select('brand'), sb.rpc('is_admin'),
+      sb.from('subscriptions').select('status, expires_at, source, cancels, product'), sb.from('brand_purchases').select('brand'), sb.rpc('is_admin'),
       sb.rpc('has_subscription')]);
     SHOP.index = r[0].data || [];
     SHOP.paywall = (r[1].data || []).some(function (s) { return s.key === 'paywall_on' && s.value === true; });
@@ -842,7 +842,26 @@
       btn.disabled = false; btn.textContent = was; say('⚠️ ' + (why || 'Couldn\'t open the payment page.'));
     });
   }
-  window.pcBuy = function (action, brand, btn) { buy(action, brand, btn, null); };
+  window.pcBuy = function (action, brand, btn) {
+    if (action === 'all') { showPlans(); return; } // the plan choice (and free trial) lives on the Paint brands card
+    buy(action, brand, btn, null);
+  };
+  function buyPlan(plan, btn, msg) {
+    if (offlineUser || !navigator.onLine) { msg.textContent = 'You need a connection to buy.'; return; }
+    btn.disabled = true;
+    var was = btn.textContent;
+    btn.textContent = 'Opening the payment page…';
+    sb.functions.invoke('billing', { body: { action: 'all', plan: plan } }).then(async function (r) {
+      if (r.data && r.data.url) { location.href = r.data.url; return; }
+      var why = r.data && r.data.error;
+      if (!why && r.error) { try { why = (await r.error.context.json()).error; } catch (e) { why = r.error.message; } }
+      btn.disabled = false; btn.textContent = was; msg.textContent = '⚠️ ' + (why || 'Couldn\'t open the payment page.');
+    });
+  }
+  function showPlans() {
+    var p = document.getElementById('plans') || document.getElementById('shop');
+    if (p) p.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
 
   // The brand's name if its paint list is for sale and this person hasn't got it ('' otherwise). Used by the add form
   // and the barcode scanner, which then say so instead of filling the paint in.
@@ -885,15 +904,20 @@
         '<div style="margin:8px 0 4px;font-size:14px">📸 <b>Snap your paint rack</b><br><span class="muted">Photograph your bottles and the app reads the labels, adding a whole shelf at once instead of one by one.</span></div>' +
         '<div style="margin:8px 0 4px;font-size:14px">✍️ <b>Every brand fills itself in</b><br><span class="muted">Type “70.950” or “Mephiston” and the brand, range, name and type are done, with the paint\'s real colour for shade, highlight and colour-harmony suggestions. Without it, you type those in yourself (The Army Painter fills in free).</span></div>' +
       '</details>' +
-      '<button type="button" id="upsellall">🔓 All brands: $2.99 a month</button>' +
-      '<div class="muted" style="margin-top:6px;font-size:13px">Cancel any time. Only need one brand? <a href="#" id="upsellone" style="color:#93c5fd">Unlock one for 99¢</a></div></div>');
-    var all = document.getElementById('upsellall');
-    all.onclick = function () { buy('all', '', all, null); };
+      '<button type="button" id="upsellall">' + (SHOP.subRow ? '🔓 See All brands plans' : '🔓 Try All brands free for 7 days') + '</button>' +
+      '<div class="muted" style="margin-top:6px;font-size:13px">From $1.67 a month. Only need one brand? <a href="#" id="upsellone" style="color:#93c5fd">Unlock one for 99¢</a></div></div>');
+    document.getElementById('upsellall').onclick = showPlans;
     document.getElementById('upsellone').onclick = function (e) {
       e.preventDefault();
       var pick = document.getElementById('shoppick');
       if (pick) { pick.scrollIntoView({ behavior: 'smooth', block: 'center' }); setTimeout(function () { pick.focus(); }, 400); }
     };
+  }
+
+  function planRow(value, name, price, note, on) {
+    return '<label style="display:flex;align-items:center;gap:10px;margin-top:6px;padding:10px 12px;border-radius:12px;cursor:pointer;border:' +
+      (on ? '2px solid #4f8cff' : '1px solid #2b3039') + '" data-plan="' + value + '"><input type="radio" name="plan" value="' + value + '"' + (on ? ' checked' : '') + ' style="margin:0">' +
+      '<span style="flex:1"><b>' + name + '</b><br><span class="muted" style="font-size:13px">' + note + '</span></span><b>' + price + '</b></label>';
   }
 
   function shopBtn(id, label, ghost) {
@@ -913,14 +937,22 @@
     if (SHOP.admin && !SHOP.paywall) h += '<div class="muted" style="margin:6px 0">Only you see this card: payments are switched off, so everyone gets every brand. Purchases here use Stripe\'s test mode.</div>';
     if (!SHOP.index.length) h += '<div class="muted" style="margin-top:6px">The paint lists haven\'t been published to the database yet.</div>';
     else if (SHOP.sub) {
-      h += '<div style="margin-top:6px">✅ You have every brand' + (SHOP.sub.status === 'gift' ? ' (a gift, thank you for testing!)' : '') + '.</div>' +
-        (end ? '<div class="muted">' + (SHOP.sub.cancels ? 'Cancelled: you keep every brand until ' + esc(end) + ', with no more charges.' : 'Renews on ' + esc(end) + ' for $2.99.') + '</div>' : '') +
-        (SHOP.sub.source === 'stripe' ? shopBtn('shopmanage', 'Manage my subscription', true) : '');
+      var life = SHOP.sub.product === 'lifetime';
+      h += '<div style="margin-top:6px">✅ You have every brand' + (SHOP.sub.status === 'gift' ? ' (a gift, thank you for testing!)' : life ? ', for life' : '') + '.</div>' +
+        (end && !life ? '<div class="muted">' + (SHOP.sub.status === 'trial' ? 'Free trial until ' + esc(end) + (SHOP.sub.cancels ? '. Cancelled, so you won\'t be charged.' : ', then your plan starts.')
+          : SHOP.sub.cancels ? 'Cancelled: you keep every brand until ' + esc(end) + ', with no more charges.' : 'Renews on ' + esc(end) + '.') + '</div>' : '') +
+        (SHOP.sub.source === 'stripe' && !life ? shopBtn('shopmanage', 'Manage my subscription', true) : '');
     } else {
+      var trial = !SHOP.subRow; // one free trial per person
       h += '<div class="muted" style="margin:6px 0 2px"><b style="color:#e9ebef">All brands</b>: every brand fills itself in as you type, with real colours, ' +
           'plus barcode scanning (beta) and reading labels from photos.</div>' +
-        shopBtn('shopall', '🔓 All brands: $2.99 a month') +
-        '<div class="muted" style="margin:4px 0 0">Renews monthly, cancel any time.</div>' +
+        '<div id="plans" style="margin-top:8px">' +
+          planRow('month', 'Monthly', '$2.99 a month', 'Cancel any time', false) +
+          planRow('year', 'Yearly', '$19.99 a year', '$1.67 a month · save 44%', true) +
+          planRow('lifetime', 'Lifetime', '$39.99 once', 'Pay once, keep it', false) +
+        '</div>' +
+        shopBtn('shopall', trial ? 'Start 7-day free trial' : 'Get All brands') +
+        '<div class="muted" id="plannote" style="margin:4px 0 0;font-size:13px"></div>' +
         (locked.length
           ? '<div style="margin-top:14px"><b>Or unlock one brand, yours for good: 99¢</b></div>' +
             '<div class="muted">That brand\'s paints fill themselves in, with their real colours.</div>' +
@@ -948,7 +980,21 @@
     var msg = document.getElementById('shopmsg');
     function go(action, brand, btn) { buy(action, brand, btn, msg); }
     var all = document.getElementById('shopall');
-    if (all) all.onclick = function () { go('all', '', all); };
+    if (all) {
+      var trialOk = !SHOP.subRow;
+      var plan = function () { var c = box.querySelector('input[name=plan]:checked'); return c ? c.value : 'year'; };
+      var sync = function () {
+        var p = plan();
+        [].forEach.call(box.querySelectorAll('[data-plan]'), function (l) { l.style.border = l.dataset.plan === p ? '2px solid #4f8cff' : '1px solid #2b3039'; });
+        all.textContent = p === 'lifetime' ? 'Buy for $39.99' : trialOk ? 'Start 7-day free trial' : 'Get All brands';
+        document.getElementById('plannote').textContent = p === 'lifetime' ? 'One payment. Every brand, scanning and photos, for good.'
+          : trialOk ? 'Free for 7 days, then ' + (p === 'year' ? '$19.99 a year' : '$2.99 a month') + '. Cancel before then and you won\'t be charged.'
+          : 'Renews ' + (p === 'year' ? 'yearly' : 'monthly') + ', cancel any time.';
+      };
+      [].forEach.call(box.querySelectorAll('input[name=plan]'), function (r) { r.onchange = sync; });
+      sync();
+      all.onclick = function () { buyPlan(plan(), all, msg); };
+    }
     var manage = document.getElementById('shopmanage');
     if (manage) manage.onclick = function () { go('manage', '', manage); };
     var one = document.getElementById('shopone');
@@ -1257,6 +1303,22 @@
     .harm .hname { font-weight: 800; font-size: 15px; }
     .hitem { display: flex; align-items: center; gap: 8px; margin-top: 7px; font-size: 14px; }
     .tap { cursor: pointer; }
+    /* Home: the collection at a glance */
+    .hhead { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .hhead h2 { margin: 0; font-size: 22px; }
+    .hstats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+    .hstat { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 12px; text-align: left; color: var(--text); }
+    .hstat .n { display: block; font-size: 24px; font-weight: 800; }
+    .hstat .l { color: var(--muted); font-size: 13px; }
+    .addpaint { width: 100%; margin: 14px 0 4px; padding: 14px; font-size: 17px; }
+    .hsect { margin: 18px 0 8px; font-weight: 700; display: flex; justify-content: space-between; align-items: baseline; }
+    .hsect a { font-weight: 400; font-size: 14px; color: #93c5fd; }
+    .hswatches { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
+    .hsw { flex: none; width: 46px; height: 46px; border-radius: 10px; border: 1px solid var(--line); cursor: pointer; }
+    .hrow { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+    .hrow:last-child { border-bottom: 0; }
+    .hrow .sw { width: 34px; height: 34px; border-radius: 8px; flex: none; }
+    .hrow .grow { flex: 1; min-width: 0; }
     .tap:hover, .tap:focus-visible { outline: 2px solid var(--muted, #8e95a2); outline-offset: 2px; border-radius: var(--radius); }
     .tsw { flex: none; width: 14px; height: 14px; border-radius: 4px; outline: 1px dashed #ffffff88; outline-offset: 1px; }
     .wheelwrap { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start; margin-top: 12px; }
@@ -1343,7 +1405,7 @@
   <header class="top">
     <div class="logo">🎨 Bad Influence Hobby</div>
     <nav class="tabs">
-      <button class="tab" id="tab-scan" onclick="go('scan')"><span class="ti">➕</span><span>Add</span></button>
+      <button class="tab" id="tab-scan" onclick="go('scan')"><span class="ti">🏠</span><span>Home</span></button>
       <button class="tab" id="tab-inv" onclick="go('inv')"><span class="ti">🗂️</span><span>Paints</span></button>
       <button class="tab" id="tab-eq" onclick="go('eq')"><span class="ti">🔁</span><span>Match</span></button>
       <button class="tab" id="tab-hl" onclick="go('hl')"><span class="ti">🎨</span><span>Colours</span></button>
@@ -1415,6 +1477,8 @@
   </section>
 
   <section id="scan" class="narrow" hidden>
+  <div id="home"></div>
+  <div id="addtools" hidden style="margin-top:6px">
   <div class="scanrow">
     <label class="scan">📷 Scan a barcode<span class="sub">Point the camera at the bottle</span>
       <input id="photo" type="file" accept="image/*" capture="environment">
@@ -1440,6 +1504,8 @@
     </div>
     <div id="rlist"></div>
   </div>
+  </div><!-- /addtools -->
+  <div id="homemore"></div>
 
   <div id="out"></div>
   <div id="reader"></div>
@@ -2218,7 +2284,7 @@
     show('<div class="card"><div class="big">📷 Scanning and photos</div>' +
       '<div class="muted" style="margin:6px 0">Barcode scanning (beta) and reading labels from photos come with <b>All brands</b> ($2.99 a month): ' +
       'point the camera at a bottle to see in a second whether you already own it, or photograph a shelf to add many paints at once.</div>' +
-      '<button type="button" onclick="pcBuy(\'all\', \'\', this)">🔓 Get All brands: $2.99 a month</button>' +
+      '<button type="button" onclick="pcBuy(\'all\', \'\', this)">🔓 See All brands plans (7-day free trial)</button>' +
       '<div class="muted" style="margin-top:8px">Or type the paint\'s name or number in the box above.</div></div>');
   }
   document.querySelector('label.scan.alt').addEventListener('click', function (e) {
@@ -2621,9 +2687,56 @@
   }
 
   // ---------- Pages ----------
+  // ---------- Home: your collection at a glance, with the add tools behind "Add paint" ----------
+  var addOpen = false;
+  function toggleAdd(open) {
+    addOpen = open === undefined ? !addOpen : open;
+    el('addtools').hidden = !addOpen;
+    var b = el('addpaintbtn');
+    if (b) b.textContent = addOpen ? '✕ Close' : '＋ Add paint';
+    if (addOpen) setTimeout(function () { el('code').focus(); }, 50);
+  }
+  function wishSwatch(w) {
+    var p = { brand: w.brand, range: w.range, name: w.name, qty: 0, notes: '', type: '' };
+    try { enrich(p); } catch (e) {}
+    return swatchStyle(p);
+  }
+  function homeRender() {
+    var box = el('home');
+    if (!box) return;
+    if (!INV) { box.innerHTML = '<div class="muted" style="padding:10px 0">Loading your paints…</div>'; fetchInv().then(homeRender, function () {}); return; }
+    var owned = INV.filter(function (p) { return Number(p.qty) > 0; }), usedUp = INV.length - owned.length, toBuy = (WISH || []).length;
+    var recent = INV.slice().sort(function (a, b) { return b.row - a.row; }).slice(0, 10);
+    var h = '<div class="hhead"><h2>Your paints</h2><button type="button" class="ghost" onclick="go(\'inv\')" aria-label="Search your paints">🔍</button></div>';
+    if (!INV.length) {
+      h += '<div class="card"><div class="big">Start your collection</div><div class="muted">Add the paints you own, and the app tells you what you have, what goes together, and what to buy.</div></div>';
+    } else {
+      h += '<div class="hstats">' +
+        '<button type="button" class="hstat" onclick="go(\'inv\')"><span class="n">' + owned.length + '</span><span class="l">' + (owned.length === 1 ? 'Paint' : 'Paints') + '</span></button>' +
+        '<button type="button" class="hstat" onclick="go(\'inv\'); el(\'iout\').checked = true; renderInv()"><span class="n"' + (usedUp ? ' style="color:var(--warn)"' : '') + '>' + usedUp + '</span><span class="l">Used up</span></button>' +
+        '<button type="button" class="hstat" onclick="go(\'inv\'); invView(\'wish\')"><span class="n">' + toBuy + '</span><span class="l">To buy</span></button></div>';
+    }
+    h += '<button type="button" id="addpaintbtn" class="addpaint" onclick="toggleAdd()">' + (addOpen ? '✕ Close' : '＋ Add paint') + '</button>';
+    box.innerHTML = h;
+    h = ''; // the rest goes below the add tools, which open straight under the button
+    box = el('homemore');
+    if (recent.length) h += '<div class="hsect">Recently added <a href="#" onclick="go(\'inv\'); el(\'isort\').value = \'new\'; renderInv(); return false">See all</a></div>' +
+      '<div class="hswatches">' + recent.map(function (p) {
+        return '<div class="hsw" role="button" tabindex="0" title="' + esc(p.name + ' · ' + p.brand) + '" style="' + swatchStyle(p) + '" onclick="paintDetail(' + p.row + ')"></div>';
+      }).join('') + '</div>';
+    var wish = (WISH || []).slice(0, 3);
+    if (wish.length) h += '<div class="hsect">On your shopping list <a href="#" onclick="go(\'inv\'); invView(\'wish\'); return false">See all</a></div>' +
+      wish.map(function (w) {
+        return '<div class="hrow"><div class="sw" style="' + wishSwatch(w) + '"></div><div class="grow"><div>' + esc(w.name) + '</div>' +
+          '<div class="muted" style="font-size:13px">' + esc([w.brand, w.reason === 'Running low' ? 'running low' : ''].filter(Boolean).join(' · ')) + '</div></div></div>';
+      }).join('');
+    box.innerHTML = h;
+  }
+
   function go(page) {
     closeDetail();
-    if (!WISH) loadWish();
+    if (!WISH) loadWish().then(function () { if (!el('scan').hidden) homeRender(); });
+    if (page === 'scan') { homeRender(); if (INV && !INV.length) toggleAdd(true); }
     ['inv', 'scan', 'eq', 'hl', 'rec'].forEach(function (p) {
       el(p).hidden = page !== p;
       el('tab-' + p).className = 'tab' + (page === p ? ' on' : '');
@@ -2791,6 +2904,7 @@
           el('ibrand').value = brands[cur] ? cur : '';
           fillTypeFilter();
           resolve(list);
+          if (!el('scan').hidden) homeRender(); // keep Home's numbers up to date
         });
       }).withFailureHandler(function (e) { invPromise = null; reject(e); }).listPaints();
     });
@@ -3512,7 +3626,7 @@
   }
   // Scan a bottle's barcode and save it on this paint, so scanning it later finds it straight away.
   function scanFor(row) {
-    if (!scanAllowed()) { el('dmsg').innerHTML = '📷 Barcode scanning (beta) comes with All brands, $2.99 a month. <button type="button" class="ghost" onclick="pcBuy(\'all\', \'\', this)">Get All brands</button>'; return; }
+    if (!scanAllowed()) { el('dmsg').innerHTML = '📷 Barcode scanning (beta) comes with All brands (7-day free trial). <button type="button" class="ghost" onclick="closeDetail(); go(\'scan\'); pcBuy(\'all\', \'\', this)">See plans</button>'; return; }
     if (!liveOk()) { el('dmsg').textContent = 'Barcode scanning needs the installed app (or Chrome), not the Google page.'; return; }
     liveStart(function (code) {
       if (!code) { el('dmsg').textContent = 'The camera didn\'t start. Allow the camera for this app and try again.'; return; }
@@ -4226,7 +4340,7 @@
   }
 
   (function start() {
-    function pick(v) { go(/^(scan|inv|eq|hl|rec)$/.test(v || '') ? v : (window.innerWidth >= 900 ? 'inv' : 'scan')); }
+    function pick(v) { go(/^(scan|inv|eq|hl|rec)$/.test(v || '') ? v : 'scan'); } // opens on Home
     if (google.script.url) google.script.url.getLocation(function (loc) { pick(loc && loc.parameter && loc.parameter.view); });
     else pick();
   })();
