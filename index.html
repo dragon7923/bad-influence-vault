@@ -18,7 +18,7 @@
 // the signed-in person's rows in the Supabase database instead of a Google Sheet.
 // The database's own rules (Row Level Security) are what keep each person's data private; this file only asks.
 (function () {
-  var SB_URL = 'https://ewgbdtkeaoguwayymtay.supabase.co', SB_KEY = 'sb_publishable_md1uOYqL25oZVSb-AknbOg_gfpV7TMH', VERSION = 'b85606e358';
+  var SB_URL = 'https://ewgbdtkeaoguwayymtay.supabase.co', SB_KEY = 'sb_publishable_md1uOYqL25oZVSb-AknbOg_gfpV7TMH', VERSION = '1f57a2e42b';
   var sb = window.supabase.createClient(SB_URL, SB_KEY, {
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, storageKey: 'pc-auth' }
   });
@@ -3134,22 +3134,25 @@
   // its own kind: an edge highlight has to cover (no Contrast, washes, inks or glazes); a glaze has to be see-through;
   // a recess shade can be a wash/shade, a Contrast-type paint, or a darker ordinary paint.
   // Never suggested for any of them: markers, spray paint, coloured pencils, pigment powders, primers and effect paints.
+  // A marker, coloured pencil, spray or pigment powder gets suggestions of its own kind instead: a darker marker to shade
+  // a marker, a lighter pencil to highlight a pencil. (No glazes for those.)
   var NOT_FOR_BRUSHING = /^(Marker|Spray paint|Coloured pencil|Pigment powder|Primer|Effect)$/;
-  function mediumOk(cand, job) {
+  function mediumKind(p) { var t = p.type || inferType(p); return KINDS[t] || t === 'Pigment powder' ? t : 'Paint'; }
+  function mediumOk(cand, job, base) {
     var t = cand.type || inferType(cand), words = (cand.range || '') + ' ' + (cand.name || '');
+    var kind = base ? mediumKind(base) : 'Paint';
+    if (kind !== 'Paint') return job !== 'glaze' && mediumKind(cand) === kind;
     if (NOT_FOR_BRUSHING.test(t) || isCraft(cand)) return false;
     if (job === 'highlight') return !SEE_THROUGH.test(t) && !/contrast|speedpaint|xpress|\b(clear|transparent|ink|wash|shade|glaze|tone)\b/i.test(words);
     if (job === 'glaze') return SEE_THROUGH.test(t) || TRANSLUCENT.test(words);
     return true; // shade, harmony, mix
   }
   // For Match: like for like. A paint matches paints, a marker markers, a powder powders.
-  function sameMedium(a, b) {
-    var k = function (p) { var t = p.type || inferType(p); return KINDS[t] ? t : t === 'Pigment powder' ? t : 'Paint'; };
-    return k(a) === k(b);
-  }
+  function sameMedium(a, b) { return mediumKind(a) === mediumKind(b); }
+  function kindWord(p) { var k = mediumKind(p); return k === 'Paint' ? 'paints' : k === 'Pigment powder' ? 'pigment powders' : KINDS[k][1]; }
 
   function highlightScore(base, cand) {
-    if (!cand.hex || !base.hex || !mediumOk(cand, 'highlight')) return null;
+    if (!cand.hex || !base.hex || !mediumOk(cand, 'highlight', base)) return null;
     if (/shade|wash|technical|primer|spray|glaze|medium|varnish/i.test(cand.range + ' ' + cand.name)) return null;
     if (/^(Pigment powder|Effect|Primer|Wash \/ Shade|Ink \/ Glaze)$/.test(cand.type)) return null;
     if (!!base.fams.metal !== !!cand.fams.metal) return null; // metallics highlight metallics, and only them
@@ -3220,7 +3223,7 @@
 
   // Recess shade: darker than the base, same hue. Washes and shades are made for this.
   function shadeScore(base, cand) {
-    if (!cand.hex || !base.hex || !mediumOk(cand, 'shade')) return null;
+    if (!cand.hex || !base.hex || !mediumOk(cand, 'shade', base)) return null;
     if (/primer|spray|medium|varnish|technical/i.test(cand.range + ' ' + cand.name)) return null;
     if (/^(Pigment powder|Effect|Primer)$/.test(cand.type)) return null;
     var isWash = /shade|wash|\bink\b|\btone\b/i.test(cand.range + ' ' + cand.name) || /^(Wash \/ Shade|Ink \/ Glaze)$/.test(cand.type);
@@ -3249,7 +3252,7 @@
 
   // Glaze: a thin, see-through layer that tints the base. Same or neighbouring hue.
   function glazeScore(base, cand) {
-    if (!cand.hex || !base.hex || !mediumOk(cand, 'glaze')) return null;
+    if (!cand.hex || !base.hex || !mediumOk(cand, 'glaze', base)) return null;
     if (base.fams.metal && !cand.fams.metal && !/glaze|\bink\b|wash|shade/i.test(cand.range + ' ' + cand.name)) return null;
     var B = lab(base.hex), C = lab(cand.hex);
     if (C.C < 10) return null; // a glaze is for colour
@@ -3300,7 +3303,7 @@
   function bestForHue(t, base) {
     var best = null, bl = hsl(base.hex).l;
     INV.forEach(function (p) {
-      if (!p.hex || !(Number(p.qty) > 0) || p.fams.metal || isCraft(p) || p.row === base.row || !mediumOk(p, 'harmony')) return;
+      if (!p.hex || !(Number(p.qty) > 0) || p.fams.metal || isCraft(p) || p.row === base.row || !mediumOk(p, 'harmony', base)) return;
       if (/shade|wash|technical|primer|spray|medium|varnish/i.test(p.range + ' ' + p.name)) return;
       if (/^(Effect|Primer)$/.test(p.type)) return;
       var c = hsl(p.hex);
@@ -3809,9 +3812,9 @@
 
     var unknown = owned.filter(function (p) { return !p.hex; }).length;
     return head +
-      section('▼ Recess shade', shades, 'shade', whyShade, 'None of your paints is darker in a colour that would work as a shade.') +
-      section('▲ Edge highlight', lights, 'hl', why, 'None of your paints is lighter in a colour that would work as a highlight.') +
-      section('◆ Glaze', glazes, 'glaze', whyGlaze, 'You don\'t own a see-through paint (Contrast, Speedpaint, glaze or ink) in a colour that suits this.') +
+      section('▼ Recess shade', shades, 'shade', whyShade, 'None of your ' + kindWord(base) + ' is darker in a colour that would work as a shade.') +
+      section('▲ Edge highlight', lights, 'hl', why, 'None of your ' + kindWord(base) + ' is lighter in a colour that would work as a highlight.') +
+      (mediumKind(base) === 'Paint' ? section('◆ Glaze', glazes, 'glaze', whyGlaze, 'You don\'t own a see-through paint (Contrast, Speedpaint, glaze or ink) in a colour that suits this.') : '') +
       harmoniesHtml(base) +
       (unknown ? '<div class="muted" style="margin-top:12px">' + unknown + ' of your paints have no known colour, so I couldn\'t check them.</div>' : '');
   }
