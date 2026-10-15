@@ -18,7 +18,7 @@
 // the signed-in person's rows in the Supabase database instead of a Google Sheet.
 // The database's own rules (Row Level Security) are what keep each person's data private; this file only asks.
 (function () {
-  var SB_URL = 'https://ewgbdtkeaoguwayymtay.supabase.co', SB_KEY = 'sb_publishable_md1uOYqL25oZVSb-AknbOg_gfpV7TMH', VERSION = 'd18a1fbfb9';
+  var SB_URL = 'https://ewgbdtkeaoguwayymtay.supabase.co', SB_KEY = 'sb_publishable_md1uOYqL25oZVSb-AknbOg_gfpV7TMH', VERSION = '4d370be862';
   var sb = window.supabase.createClient(SB_URL, SB_KEY, {
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, storageKey: 'pc-auth' }
   });
@@ -3600,7 +3600,64 @@
 
   function hlShow(base) {
     el('hpicks').innerHTML = '';
-    el('hout').innerHTML = colourHelpHtml(base);
+    el('hout').innerHTML = colourHelpHtml(base, recipeBtn(base));
+  }
+
+  // ---------- "Add to a recipe" from a paint's page ----------
+  var TOREC = null;
+  function recipeBtn(p) {
+    TOREC = { brand: p.brand || '', name: p.name, type: p.type || inferType(p) };
+    return '<div class="row"><button type="button" class="ghost" onclick="toRecipeOpen()">📋 Add to a recipe</button></div><div id="torec"></div>';
+  }
+  function toRecipeOpen() {
+    var box = el('torec');
+    if (!box) return;
+    if (box.innerHTML) { box.innerHTML = ''; return; } // second tap closes it
+    if (!RECIPES) {
+      box.innerHTML = '<div class="muted">Loading your recipes…</div>';
+      google.script.run.withSuccessHandler(function (list) { RECIPES = list; box.innerHTML = ''; toRecipeOpen(); })
+        .withFailureHandler(function (e) { box.innerHTML = '<div class="hint">⚠️ ' + esc(e && e.message || e) + '</div>'; }).getRecipes();
+      return;
+    }
+    var t = TOREC.type, tech = /Contrast|Speedpaint|Xpress/.test(t) ? 'Contrast' : t === 'Wash / Shade' ? 'Wash / Shade' : t === 'Ink / Glaze' ? 'Glaze' : t === 'Primer' ? 'Prime' : t === 'Effect' ? 'Effect' : 'Layer';
+    box.innerHTML = '<div class="qa" style="margin-top:8px">' +
+      '<div class="flabel">Recipe</div><select id="trname" onchange="toRecipePick()"><option value="">Choose a recipe…</option>' +
+        RECIPES.map(function (r, i) { return '<option value="' + i + '">' + esc(r.name) + '</option>'; }).join('') +
+        '<option value="new">＋ New recipe…</option></select>' +
+      '<input type="text" id="trnew" placeholder="New recipe name, e.g. Ultramarines" hidden>' +
+      '<div class="flabel">Part (optional)</div><input type="text" id="trsec" list="trsecs" placeholder="e.g. Armour, Cape, Base"><datalist id="trsecs"></datalist>' +
+      '<div class="flabel">Step</div><select id="trtech">' + TECHNIQUES.map(function (x) { return '<option' + (x === tech ? ' selected' : '') + '>' + x + '</option>'; }).join('') + '</select>' +
+      '<div class="row"><button type="button" onclick="toRecipeSave(this)">💾 Add ' + esc(TOREC.name) + '</button></div>' +
+      '<div class="hint" id="trmsg"></div></div>';
+    if (!RECIPES.length) { el('trname').value = 'new'; toRecipePick(); }
+  }
+  function toRecipePick() {
+    var v = el('trname').value, secs = PARTS.slice();
+    el('trnew').hidden = v !== 'new';
+    if (v === 'new') el('trnew').focus();
+    if (v !== '' && v !== 'new') recSections(RECIPES[Number(v)]).forEach(function (s) { if (s && secs.indexOf(s) === -1) secs.unshift(s); });
+    el('trsecs').innerHTML = datalistOptions(secs);
+  }
+  function toRecipeSave(btn) {
+    var v = el('trname').value, msg = el('trmsg');
+    if (v === '') { msg.textContent = 'Choose a recipe first.'; return; }
+    var name = v === 'new' ? el('trnew').value.trim() : RECIPES[Number(v)].name;
+    if (!name) { msg.textContent = 'Give the new recipe a name.'; el('trnew').focus(); return; }
+    var existing = RECIPES.filter(function (r) { return r.name.toLowerCase() === name.toLowerCase(); })[0]; // a "new" name that already exists adds to it
+    var sec = el('trsec').value.trim(), step = { section: sec, technique: el('trtech').value, brand: TOREC.brand, paint: TOREC.name, notes: '' };
+    var steps = existing ? existing.steps.slice() : [], at = steps.length;
+    steps.forEach(function (s, j) { if ((s.section || '') === sec) at = j + 1; }); // goes after that part's other steps
+    steps.splice(at, 0, step);
+    btn.disabled = true;
+    msg.textContent = 'Saving…';
+    google.script.run.withSuccessHandler(function (list) {
+      RECIPES = list;
+      el('recview').innerHTML = ''; // the Recipes tab redraws with the change
+      var n = list.map(function (x) { return x.name; }).indexOf(existing ? existing.name : name);
+      el('torec').innerHTML = '<div class="hint">✅ Added to <b>' + esc(existing ? existing.name : name) + '</b>. ' +
+        (n >= 0 ? '<a href="#" style="color:#93c5fd" onclick="closeDetail(); go(\'rec\'); recShow(' + n + '); return false">Open the recipe</a>' : '') + '</div>';
+    }).withFailureHandler(function (e) { btn.disabled = false; msg.textContent = '⚠️ ' + (e && e.message || e); })
+      .saveRecipe({ name: existing ? existing.name : name, notes: existing ? existing.notes : '', steps: steps }, existing ? existing.name : '');
   }
 
   // Tapping a paint in My paints opens the same colour help (shades, highlights, glazes, harmonies) over the list.
@@ -3616,7 +3673,7 @@
       wishBtn(p, 'Running low', '🛒 Running low') +
       '<div class="row"><button type="button" class="ghost" onclick="scanFor(' + row + ')">📷 ' +
         (String(p.barcode || '').replace(/\D/g, '').length >= 6 ? 'Barcode saved ✓ · scan another bottle' : 'Scan its barcode') + '</button></div>' +
-      '<div class="hint" id="dmsg"></div>' +
+      '<div class="hint" id="dmsg"></div>' + recipeBtn(p) +
       (window.pcCloud ? '<div class="row"><button type="button" class="ghost delpaint" onclick="deletePaint(' + row + ', this)">🗑 Delete this paint</button></div>' : '');
     box.innerHTML = '<div class="inner"><div class="row" style="margin-top:0"><button class="ghost" onclick="closeDetail()">← Back</button></div>' +
       colourHelpHtml(p, manage) + '</div>';
