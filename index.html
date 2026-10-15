@@ -18,7 +18,7 @@
 // the signed-in person's rows in the Supabase database instead of a Google Sheet.
 // The database's own rules (Row Level Security) are what keep each person's data private; this file only asks.
 (function () {
-  var SB_URL = 'https://ewgbdtkeaoguwayymtay.supabase.co', SB_KEY = 'sb_publishable_md1uOYqL25oZVSb-AknbOg_gfpV7TMH', VERSION = 'bdf16dda75';
+  var SB_URL = 'https://ewgbdtkeaoguwayymtay.supabase.co', SB_KEY = 'sb_publishable_md1uOYqL25oZVSb-AknbOg_gfpV7TMH', VERSION = 'd74a6b6f78';
   var sb = window.supabase.createClient(SB_URL, SB_KEY, {
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, storageKey: 'pc-auth' }
   });
@@ -2828,8 +2828,11 @@
     if (/metal/i.test(p.range || '') || FAMILY_WORDS.metal.test(normName(p.name))) return 'Metallic';
     return 'Regular';
   }
+  // The type picker, in two groups so markers, sprays and pencils are easy to find.
   function typeOptions(current) {
-    return TYPES.map(function (t) { return '<option' + (t === current ? ' selected' : '') + '>' + t + '</option>'; }).join('');
+    var opt = function (t) { return '<option' + (t === current ? ' selected' : '') + '>' + t + '</option>'; };
+    return '<optgroup label="Paint">' + TYPES.filter(function (t) { return !KINDS[t] && t !== 'Other'; }).map(opt).join('') + '</optgroup>' +
+      '<optgroup label="Not paint">' + Object.keys(KINDS).map(opt).join('') + opt('Other') + '</optgroup>';
   }
 
   function hsl(hex) {
