@@ -18,7 +18,7 @@
 // the signed-in person's rows in the Supabase database instead of a Google Sheet.
 // The database's own rules (Row Level Security) are what keep each person's data private; this file only asks.
 (function () {
-  var SB_URL = 'https://ewgbdtkeaoguwayymtay.supabase.co', SB_KEY = 'sb_publishable_md1uOYqL25oZVSb-AknbOg_gfpV7TMH', VERSION = 'd74a6b6f78';
+  var SB_URL = 'https://ewgbdtkeaoguwayymtay.supabase.co', SB_KEY = 'sb_publishable_md1uOYqL25oZVSb-AknbOg_gfpV7TMH', VERSION = 'b85606e358';
   var sb = window.supabase.createClient(SB_URL, SB_KEY, {
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, storageKey: 'pc-auth' }
   });
@@ -3130,8 +3130,26 @@
   function hueGap(B, C) { var d = Math.abs(B.h - C.h); return d > 180 ? 360 - d : d; }
 
   // Lower score = better edge highlight. null = not usable.
+  // Can this thing do this job? Shades, highlights, glazes, harmonies and mixes all need paint you brush on, and each job
+  // its own kind: an edge highlight has to cover (no Contrast, washes, inks or glazes); a glaze has to be see-through;
+  // a recess shade can be a wash/shade, a Contrast-type paint, or a darker ordinary paint.
+  // Never suggested for any of them: markers, spray paint, coloured pencils, pigment powders, primers and effect paints.
+  var NOT_FOR_BRUSHING = /^(Marker|Spray paint|Coloured pencil|Pigment powder|Primer|Effect)$/;
+  function mediumOk(cand, job) {
+    var t = cand.type || inferType(cand), words = (cand.range || '') + ' ' + (cand.name || '');
+    if (NOT_FOR_BRUSHING.test(t) || isCraft(cand)) return false;
+    if (job === 'highlight') return !SEE_THROUGH.test(t) && !/contrast|speedpaint|xpress|\b(clear|transparent|ink|wash|shade|glaze|tone)\b/i.test(words);
+    if (job === 'glaze') return SEE_THROUGH.test(t) || TRANSLUCENT.test(words);
+    return true; // shade, harmony, mix
+  }
+  // For Match: like for like. A paint matches paints, a marker markers, a powder powders.
+  function sameMedium(a, b) {
+    var k = function (p) { var t = p.type || inferType(p); return KINDS[t] ? t : t === 'Pigment powder' ? t : 'Paint'; };
+    return k(a) === k(b);
+  }
+
   function highlightScore(base, cand) {
-    if (!cand.hex || !base.hex) return null;
+    if (!cand.hex || !base.hex || !mediumOk(cand, 'highlight')) return null;
     if (/shade|wash|technical|primer|spray|glaze|medium|varnish/i.test(cand.range + ' ' + cand.name)) return null;
     if (/^(Pigment powder|Effect|Primer|Wash \/ Shade|Ink \/ Glaze)$/.test(cand.type)) return null;
     if (!!base.fams.metal !== !!cand.fams.metal) return null; // metallics highlight metallics, and only them
@@ -3202,7 +3220,7 @@
 
   // Recess shade: darker than the base, same hue. Washes and shades are made for this.
   function shadeScore(base, cand) {
-    if (!cand.hex || !base.hex) return null;
+    if (!cand.hex || !base.hex || !mediumOk(cand, 'shade')) return null;
     if (/primer|spray|medium|varnish|technical/i.test(cand.range + ' ' + cand.name)) return null;
     if (/^(Pigment powder|Effect|Primer)$/.test(cand.type)) return null;
     var isWash = /shade|wash|\bink\b|\btone\b/i.test(cand.range + ' ' + cand.name) || /^(Wash \/ Shade|Ink \/ Glaze)$/.test(cand.type);
@@ -3231,7 +3249,7 @@
 
   // Glaze: a thin, see-through layer that tints the base. Same or neighbouring hue.
   function glazeScore(base, cand) {
-    if (!cand.hex || !base.hex || !(SEE_THROUGH.test(cand.type) || TRANSLUCENT.test(cand.range + ' ' + cand.name))) return null;
+    if (!cand.hex || !base.hex || !mediumOk(cand, 'glaze')) return null;
     if (base.fams.metal && !cand.fams.metal && !/glaze|\bink\b|wash|shade/i.test(cand.range + ' ' + cand.name)) return null;
     var B = lab(base.hex), C = lab(cand.hex);
     if (C.C < 10) return null; // a glaze is for colour
@@ -3282,7 +3300,7 @@
   function bestForHue(t, base) {
     var best = null, bl = hsl(base.hex).l;
     INV.forEach(function (p) {
-      if (!p.hex || !(Number(p.qty) > 0) || p.fams.metal || isCraft(p) || p.row === base.row) return;
+      if (!p.hex || !(Number(p.qty) > 0) || p.fams.metal || isCraft(p) || p.row === base.row || !mediumOk(p, 'harmony')) return;
       if (/shade|wash|technical|primer|spray|medium|varnish/i.test(p.range + ' ' + p.name)) return;
       if (/^(Effect|Primer)$/.test(p.type)) return;
       var c = hsl(p.hex);
@@ -3576,10 +3594,10 @@
     function near(list) {
       return list.map(function (p) { return { p: p, d: colourDiff(T, lab(p.hex)) }; }).sort(function (a, b) { return a.d - b.d; }).slice(0, 3);
     }
-    var mine = near((INV || []).filter(function (p) { return p.hex && Number(p.qty) > 0 && !isCraft(p) && !p.fams.metal; }));
+    var mine = near((INV || []).filter(function (p) { return p.hex && Number(p.qty) > 0 && !isCraft(p) && !p.fams.metal && mediumOk(p, 'mix'); }));
     var seen = {};
     (INV || []).forEach(function (p) { seen[sameKey(p)] = true; });
-    var buy = near(CATALOG.filter(function (c) { return /^#[0-9a-f]{6}$/i.test(c.hex) && !seen[sameKey(c)]; })
+    var buy = near(CATALOG.filter(function (c) { return /^#[0-9a-f]{6}$/i.test(c.hex) && !seen[sameKey(c)] && mediumOk(c, 'mix'); })
       .map(function (c) { return { brand: c.brand, range: c.range, name: (c.code ? c.code + ' ' : '') + c.name, hex: c.hex }; }));
     function rows(list) {
       return list.map(function (x) {
@@ -3916,7 +3934,7 @@
   // Your paints closest in colour to `base` (not counting base itself, but counting the same paint in another range).
   function closestOwned(base, max) {
     var self = base.row ? null : ownedCopy(base.brand, base.name, base.range);
-    var list = (INV || []).filter(function (p) { return p.hex && Number(p.qty) > 0 && !isCraft(p) && p.row !== base.row && p !== self; })
+    var list = (INV || []).filter(function (p) { return p.hex && Number(p.qty) > 0 && !isCraft(p) && p.row !== base.row && p !== self && sameMedium(base, p); })
       .map(function (p) { return { p: p, d: eqDistance(base, p) }; }).sort(function (a, b) { return a.d - b.d; });
     var good = list.filter(function (x) { return x.d < 30; });
     return (good.length ? good : list.slice(0, 2)).slice(0, max || 6);
@@ -3981,7 +3999,7 @@
     CATALOG.forEach(function (c) {
       if (!c.hex || c.mine || sameBrand(c.brand, base.brand)) return;
       var p = asPaint(c);
-      if (isCraft(p)) return;
+      if (isCraft(p) || !sameMedium(base, p)) return;
       var d = eqDistance(base, p), k = normName(c.brand);
       if (!best[k] || d < best[k].d) best[k] = { p: p, d: d };
     });
