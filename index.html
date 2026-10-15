@@ -18,7 +18,7 @@
 // the signed-in person's rows in the Supabase database instead of a Google Sheet.
 // The database's own rules (Row Level Security) are what keep each person's data private; this file only asks.
 (function () {
-  var SB_URL = 'https://ewgbdtkeaoguwayymtay.supabase.co', SB_KEY = 'sb_publishable_md1uOYqL25oZVSb-AknbOg_gfpV7TMH', VERSION = '4d370be862';
+  var SB_URL = 'https://ewgbdtkeaoguwayymtay.supabase.co', SB_KEY = 'sb_publishable_md1uOYqL25oZVSb-AknbOg_gfpV7TMH', VERSION = 'bdf16dda75';
   var sb = window.supabase.createClient(SB_URL, SB_KEY, {
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, storageKey: 'pc-auth' }
   });
@@ -1303,6 +1303,7 @@
     .harm .hname { font-weight: 800; font-size: 15px; }
     .hitem { display: flex; align-items: center; gap: 8px; margin-top: 7px; font-size: 14px; }
     .tap { cursor: pointer; }
+    .kind { display: inline-block; margin-top: 4px; padding: 1px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; background: var(--accent-soft); color: #93c5fd; }
     /* Home: the collection at a glance */
     .hhead { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
     .hhead h2 { margin: 0; font-size: 22px; }
@@ -2712,9 +2713,14 @@
       h += '<div class="card"><div class="big">Start your collection</div><div class="muted">Add the paints you own, and the app tells you what you have, what goes together, and what to buy.</div></div>';
     } else {
       h += '<div class="hstats">' +
-        '<button type="button" class="hstat" onclick="go(\'inv\')"><span class="n">' + owned.length + '</span><span class="l">' + (owned.length === 1 ? 'Paint' : 'Paints') + '</span></button>' +
+        (function () { // first tile: paints, or "In your collection" when there are markers, sprays or pencils too
+          var mixed = owned.some(function (p) { return KINDS[p.type]; });
+          return '<button type="button" class="hstat" onclick="go(\'inv\')"><span class="n">' + owned.length + '</span><span class="l">' +
+            (mixed ? 'In your collection' : owned.length === 1 ? 'Paint' : 'Paints') + '</span></button>';
+        })() +
         '<button type="button" class="hstat" onclick="go(\'inv\'); el(\'iout\').checked = true; renderInv()"><span class="n"' + (usedUp ? ' style="color:var(--warn)"' : '') + '>' + usedUp + '</span><span class="l">Used up</span></button>' +
-        '<button type="button" class="hstat" onclick="go(\'inv\'); invView(\'wish\')"><span class="n">' + toBuy + '</span><span class="l">To buy</span></button></div>';
+        '<button type="button" class="hstat" onclick="go(\'inv\'); invView(\'wish\')"><span class="n">' + toBuy + '</span><span class="l">To buy</span></button></div>' +
+        (owned.some(function (p) { return KINDS[p.type]; }) ? '<div class="muted" style="margin-top:6px;font-size:13px">' + kindCount(owned) + '</div>' : '');
     }
     h += '<button type="button" id="addpaintbtn" class="addpaint" onclick="toggleAdd()">' + (addOpen ? '✕ Close' : '＋ Add paint') + '</button>';
     box.innerHTML = h;
@@ -2780,7 +2786,21 @@
   var STOP = /^(and|or|all|my|the|of|with|in|paints?|colou?rs?|tones?|shades?)$/;
 
   // ---------- Paint types ----------
-  var TYPES = ['Regular', 'Contrast', 'Speedpaint', 'Xpress', 'Wash / Shade', 'Ink / Glaze', 'Metallic', 'Effect', 'Pigment powder', 'Air', 'Primer', 'Craft', 'Other'];
+  var TYPES = ['Regular', 'Contrast', 'Speedpaint', 'Xpress', 'Wash / Shade', 'Ink / Glaze', 'Metallic', 'Effect', 'Pigment powder', 'Air', 'Primer', 'Craft',
+    'Marker', 'Spray paint', 'Coloured pencil', 'Other'];
+  // Things in your collection that aren't paint in a pot: counted and labelled separately.
+  var KINDS = { 'Marker': ['marker', 'markers'], 'Spray paint': ['spray', 'sprays'], 'Coloured pencil': ['coloured pencil', 'coloured pencils'] };
+  function kindOf(p) { return KINDS[p.type] ? p.type : 'Paint'; }
+  // "180 paints and 32 markers": what a list holds, by kind.
+  function kindCount(list) {
+    var n = { Paint: 0 }, order = ['Paint', 'Marker', 'Spray paint', 'Coloured pencil'];
+    list.forEach(function (p) { var k = kindOf(p); n[k] = (n[k] || 0) + 1; });
+    var parts = order.filter(function (k) { return n[k]; }).map(function (k) {
+      var w = k === 'Paint' ? ['paint', 'paints'] : KINDS[k];
+      return '<b>' + n[k] + '</b> ' + w[n[k] === 1 ? 0 : 1];
+    });
+    return parts.length > 1 ? parts.slice(0, -1).join(', ') + ' and ' + parts[parts.length - 1] : (parts[0] || '<b>0</b> paints');
+  }
   var SEE_THROUGH = /^(Contrast|Speedpaint|Xpress|Wash \/ Shade|Ink \/ Glaze)$/;
   // Craft-store acrylics: kept in your list and recipes, but left out of the colour wheel, highlights and matches.
   var CRAFT_BRANDS = /deco ?art|americana|folk ?art|apple barrel|craft ?smart|delta|ceramcoat|crafter'?s|anita'?s|tattered angels|waverly|amsterdam|liquitex basics|plaid/i;
@@ -2789,13 +2809,18 @@
 
   // Works out a paint's type from its brand, range and name, for paints where you haven't picked one.
   function inferType(p) {
-    if (CRAFT_BRANDS.test(p.brand || '')) return 'Craft';
     var t = (p.range || '') + ' ' + (p.name || '');
+    // Not paint in a pot: markers (Ohuhu, Gundam Markers, panel liners, paint pens...), coloured pencils, spray cans.
+    if (/^(ohuhu|artistro|posca|molotow|copic|stedi|winsor & newton promarker|touchfive|arteza markers?)$/i.test(p.brand || '') ||
+        /\bmarkers?\b|playmarkers?|panel liner|paint pen|\bpens?\b|brush pen/i.test(t)) return 'Marker';
+    if (/colou?red pencils?|\bpencils?\b/i.test(t) || /prismacolor|polychromos|derwent/i.test(p.brand || '')) return 'Coloured pencil';
+    if (/spray|aerosol|rattle ?can/i.test(t) && !/primer|surface/i.test(t)) return 'Spray paint';
+    if (CRAFT_BRANDS.test(p.brand || '')) return 'Craft';
     if (/contrast/i.test(t)) return 'Contrast';
     if (/speedpaint/i.test(t)) return 'Speedpaint';
     if (/xpress/i.test(t)) return 'Xpress';
     if (/pigment|powder/i.test(t)) return 'Pigment powder';
-    if (/primer|spray|surface/i.test(t)) return 'Primer';
+    if (/primer|surface/i.test(t)) return 'Primer';
     if (/shade|wash|\btone\b|quickshade/i.test(t)) return 'Wash / Shade';
     if (/\bink\b|glaze/i.test(t)) return 'Ink / Glaze';
     if (/\bair\b/i.test(p.range || '')) return 'Air';
@@ -2894,6 +2919,12 @@
         catalogReady.then(function () {
           buildNameMap();
           list.forEach(enrich);
+          // Markers, sprays and pencils added before those kinds existed were saved as "Regular" (or no type): show what they are.
+          list.forEach(function (p) {
+            if (p.type && p.type !== 'Regular' && p.type !== 'Primer') return;
+            var k = inferType(p);
+            if (KINDS[k]) p.type = k;
+          });
           INV = list;
           invPromise = null;
           var brands = {};
@@ -2917,10 +2948,11 @@
     INV.forEach(function (p) { n[p.type] = (n[p.type] || 0) + 1; });
     el('itype').innerHTML = '<option value="">All types</option>' +
       (n.Craft ? '<option value="!Craft">Hobby paints only (' + (INV.length - n.Craft) + ')</option>' : '') +
+      (INV.some(function (p) { return KINDS[p.type]; }) ? '<option value="!Paint">Paints only, no markers or sprays (' + INV.filter(function (p) { return !KINDS[p.type]; }).length + ')</option>' : '') +
       TYPES.filter(function (t) { return n[t]; }).map(function (t) {
         return '<option value="' + t + '">' + (t === 'Craft' ? 'Craft paints' : t) + ' (' + n[t] + ')</option>';
       }).join('');
-    el('itype').value = n[cur] || (cur === '!Craft' && n.Craft) ? cur : '';
+    el('itype').value = n[cur] || (cur === '!Craft' && n.Craft) || (cur === '!Paint' && INV.some(function (p) { return KINDS[p.type]; })) ? cur : '';
   }
 
   function setPaintType(row, type) {
@@ -2952,7 +2984,7 @@
 
     var base = INV.filter(function (p) {
       if (brand && p.brand !== brand) return false;
-      if (ptype === '!Craft' ? isCraft(p) : ptype && p.type !== ptype) return false;
+      if (ptype === '!Craft' ? isCraft(p) : ptype === '!Paint' ? !!KINDS[p.type] : ptype && p.type !== ptype) return false;
       if (!showOut && !(Number(p.qty) > 0)) return false;
       var hay = normName([p.brand, p.range, p.name, p.notes, p.type].join(' '));
       return text.every(function (w) { return hay.indexOf(normName(w)) !== -1; });
@@ -2983,15 +3015,18 @@
     var label = fams.map(function (f) { return FAMILIES.filter(function (x) { return x[0] === f; })[0][1].toLowerCase(); }).join(' & ');
     var bottleText = bottles + ' ' + one('bottles', bottles);
     if (!n) el('isum').innerHTML = '';
-    else if (!fams.length && !text.length && !brand && !ptype) el('isum').innerHTML = 'You own <b>' + n + '</b> ' + one('paints', n) + ' · ' + bottleText;
+    else if (!fams.length && !text.length && !brand && !ptype) el('isum').innerHTML = 'You own ' + kindCount(list) +
+      (list.some(function (p) { return KINDS[p.type]; }) ? '' : ' · ' + bottleText); // "bottles" only makes sense for paints
     else el('isum').innerHTML = (n === 1 ? 'Here’s the <b>1</b> ' : 'Here are the <b>' + n + '</b> ') +
-      (ptype ? esc(ptype) + ' ' : '') + one(label || (ptype === 'Pigment powder' ? 'pots' : 'paints'), n) +
+      (ptype && !KINDS[ptype] && ptype.charAt(0) !== '!' ? esc(ptype) + ' ' : '') +
+      one(label || (KINDS[ptype] ? KINDS[ptype][1] : ptype === 'Pigment powder' ? 'pots' : 'paints'), n) +
       (brand ? ' from ' + esc(brand) : '') + (text.length ? ' matching “' + esc(text.join(' ')) + '”' : '') +
-      ' you own · ' + bottleText;
+      ' you own' + (KINDS[ptype] ? '' : ' · ' + bottleText);
 
     // Matches that are hidden because they are used up (qty 0)
     var hiddenOut = showOut ? 0 : INV.filter(function (p) {
-      if (Number(p.qty) > 0 || (brand && p.brand !== brand) || (ptype && p.type !== ptype)) return false;
+      if (Number(p.qty) > 0 || (brand && p.brand !== brand)) return false;
+      if (ptype === '!Craft' ? isCraft(p) : ptype === '!Paint' ? !!KINDS[p.type] : ptype && p.type !== ptype) return false;
       var hay = normName([p.brand, p.range, p.name, p.notes].join(' '));
       return text.every(function (w) { return hay.indexOf(normName(w)) !== -1; }) &&
         (!fams.length || fams.some(function (f) { return p.fams[f]; }));
@@ -3058,7 +3093,8 @@
         (p.hex ? 'Tap for quantity, type, shades, highlights and harmonies' : 'Colour guessed from the name') + '">' +
         '<span class="qb" id="iqv' + p.row + '">' + qtyLabel(p.qty) + '</span></div>' +
       '<div class="info"><div class="nm">' + esc(p.name) + '</div>' +
-        '<div class="meta">' + esc([p.brand, p.range].filter(Boolean).join(' · ')) + '</div></div></div>';
+        '<div class="meta">' + esc([p.brand, p.range].filter(Boolean).join(' · ')) + '</div>' +
+        (KINDS[p.type] ? '<span class="kind">' + esc(p.type) + '</span>' : '') + '</div></div>';
   }
 
   function qtyLabel(q) { return Number(q) > 0 ? '×' + esc(q) : 'Used up'; }
