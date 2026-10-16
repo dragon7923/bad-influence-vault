@@ -18,7 +18,7 @@
 // the signed-in person's rows in the Supabase database instead of a Google Sheet.
 // The database's own rules (Row Level Security) are what keep each person's data private; this file only asks.
 (function () {
-  var SB_URL = 'https://ewgbdtkeaoguwayymtay.supabase.co', SB_KEY = 'sb_publishable_md1uOYqL25oZVSb-AknbOg_gfpV7TMH', VERSION = '1f57a2e42b';
+  var SB_URL = 'https://ewgbdtkeaoguwayymtay.supabase.co', SB_KEY = 'sb_publishable_md1uOYqL25oZVSb-AknbOg_gfpV7TMH', VERSION = '2ca46c6d5f';
   var sb = window.supabase.createClient(SB_URL, SB_KEY, {
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, storageKey: 'pc-auth' }
   });
@@ -761,6 +761,15 @@
   // The database only hands over the brands this person may read (free, bought, subscribed, or the paywall is off),
   // so locking is done by the database, not here. Lists are kept on the device (Cache API) and only downloaded again
   // when a brand's list changes. Nothing here is visible to customers until the 'paywall_on' switch is turned on.
+  // Opened as the Google Play app (the Android app starts at /?app=android, or Android tells us in the referrer)?
+  // Google Play doesn't allow selling unlocks there through Stripe, or pointing people elsewhere to buy, so the app
+  // shows no prices, buy buttons or "get it" cards. Whatever someone has (bought on the website, or free access) works.
+  window.pcStoreApp = (function () {
+    try {
+      if (/[?&]app=android\b/.test(location.search) || /^android-app:\/\/com\.badinfluencehobby\.app/.test(document.referrer)) localStorage.setItem('pc-store-app', 'android');
+      return localStorage.getItem('pc-store-app') === 'android';
+    } catch (e) { return /[?&]app=android\b/.test(location.search); }
+  })();
   var FREE_BRANDS = ['The Army Painter']; // free for everyone; used when a brand is first published (2026-10-14: owner's choice)
   var SHOP = { index: [], owned: {}, sub: null, subRow: null, paywall: false, admin: false, loaded: false };
 
@@ -891,7 +900,7 @@
     var title = document.querySelector('#scan .typetitle');
     if (title) title.textContent = can ? '✍️ Or type a paint' : '✍️ Type a paint';
     var card = document.getElementById('upsell');
-    if (can || !SHOP.loaded) { if (card) card.remove(); return; }
+    if (can || !SHOP.loaded || window.pcStoreApp) { if (card) card.remove(); return; } // no sales card in the Google Play app
     if (card) return;
     var type = document.querySelector('#scan .typebox');
     if (!type) return;
@@ -924,11 +933,24 @@
     return '<button type="button" id="' + id + '" class="' + (ghost ? 'ghost' : '') + '" style="margin-top:8px">' + label + '</button>';
   }
 
+  // The Paint brands card inside the Google Play app: what this account has, with no prices or links to buy.
+  function storeAppCard() {
+    var owned = SHOP.index.filter(function (b) { return !b.free && SHOP.owned[b.brand]; }).map(function (b) { return esc(b.brand); });
+    var free = SHOP.index.filter(function (b) { return b.free; }).map(function (b) { return esc(b.brand); });
+    return '<div class="card" style="text-align:left;margin-top:14px"><div><b>🎨 Paint brands</b></div>' +
+      (SHOP.sub ? '<div style="margin-top:6px">✅ Every brand is included in your account' + (SHOP.sub.status === 'gift' ? ' (a gift, thank you for testing!)' : '') + '.</div>'
+        : (owned.length ? '<div class="muted" style="margin-top:6px">Included in your account: ' + owned.join(', ') + '</div>' : '') +
+          (free.length ? '<div class="muted" style="margin-top:6px">Included for everyone: ' + free.join(', ') + '</div>' : '') +
+          '<div class="muted" style="margin-top:6px">Other brands: type their paints in by hand.</div>') +
+      '</div>';
+  }
+
   function renderShop() {
     var box = document.getElementById('shop');
     if (!box || !SHOP.loaded) return;
     applyGates();
     if (!SHOP.paywall && !SHOP.admin) { box.innerHTML = ''; return; } // nobody pays yet: nothing to show
+    if (window.pcStoreApp) { box.innerHTML = storeAppCard(); return; } // Google Play app: what you have, nothing to buy
     var locked = SHOP.index.filter(function (b) { return !b.free && !SHOP.owned[b.brand]; });
     var owned = SHOP.index.filter(function (b) { return !b.free && SHOP.owned[b.brand]; });
     var free = SHOP.index.filter(function (b) { return b.free; }).map(function (b) { return b.brand; });
@@ -1683,6 +1705,7 @@
     h.innerHTML = 'I don\'t have a paint list for ' + esc(b) + ' yet. <a href="#" style="color:#93c5fd" onclick="openBrandBox(el(\'fbrand\').value);return false">Add the brand</a> so its paints get recognised.';
   }
   function lockedNote(brand, after) {
+    if (window.pcStoreApp) return esc(brand) + '\'s paint list isn\'t included in your account, so fill this one in by hand.'; // Google Play app: no buying
     return '🔒 ' + esc(brand) + '\'s paint list is locked. Unlock it to fill its paints in automatically, with their real colours. ' +
       '<button type="button" class="ghost" style="margin:6px 0" onclick="pcBuy(\'brand\', ' + esc(JSON.stringify(brand)) + ', this)">Unlock ' + esc(brand) + ' for 99¢</button> ' + esc(after || '');
   }
@@ -2282,6 +2305,8 @@
   // The account version can keep barcode scanning for subscribers (window.pcCanScan); others are told how to get it.
   function scanAllowed() { return !window.pcCanScan || window.pcCanScan(); }
   function scanLocked() {
+    if (window.pcStoreApp) return show('<div class="card"><div class="big">📷 Scanning and photos</div>' +
+      '<div class="muted" style="margin:6px 0">Barcode scanning and reading labels from photos aren\'t included in your account. Type the paint\'s name or number in the box above instead.</div></div>');
     show('<div class="card"><div class="big">📷 Scanning and photos</div>' +
       '<div class="muted" style="margin:6px 0">Barcode scanning (beta) and reading labels from photos come with <b>All brands</b> ($2.99 a month): ' +
       'point the camera at a bottle to see in a second whether you already own it, or photograph a shelf to add many paints at once.</div>' +
@@ -3743,6 +3768,7 @@
   }
   // Scan a bottle's barcode and save it on this paint, so scanning it later finds it straight away.
   function scanFor(row) {
+    if (!scanAllowed() && window.pcStoreApp) { el('dmsg').textContent = '📷 Barcode scanning isn\'t included in your account.'; return; }
     if (!scanAllowed()) { el('dmsg').innerHTML = '📷 Barcode scanning (beta) comes with All brands (7-day free trial). <button type="button" class="ghost" onclick="closeDetail(); go(\'scan\'); pcBuy(\'all\', \'\', this)">See plans</button>'; return; }
     if (!liveOk()) { el('dmsg').textContent = 'Barcode scanning needs the installed app (or Chrome), not the Google page.'; return; }
     liveStart(function (code) {
