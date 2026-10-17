@@ -18,7 +18,7 @@
 // the signed-in person's rows in the Supabase database instead of a Google Sheet.
 // The database's own rules (Row Level Security) are what keep each person's data private; this file only asks.
 (function () {
-  var SB_URL = 'https://ewgbdtkeaoguwayymtay.supabase.co', SB_KEY = 'sb_publishable_md1uOYqL25oZVSb-AknbOg_gfpV7TMH', VERSION = '2ca46c6d5f';
+  var SB_URL = 'https://ewgbdtkeaoguwayymtay.supabase.co', SB_KEY = 'sb_publishable_md1uOYqL25oZVSb-AknbOg_gfpV7TMH', VERSION = '1055024dae';
   var sb = window.supabase.createClient(SB_URL, SB_KEY, {
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, storageKey: 'pc-auth' }
   });
@@ -80,8 +80,10 @@
     signInBox().innerHTML = frame(
       '<div style="color:#8e95a2;margin:8px 0 4px">' + (msg || 'Sign in to see your paints on any phone or computer. No password: we email you a sign-in code.') + '</div>' +
       '<label style="display:block;margin-top:14px;font-weight:700">Email<input id="siemail" type="email" autocomplete="email" inputmode="email" placeholder="you@example.com" style="' + field + '"></label>' +
-      '<button id="sigo" style="' + mainBtn + '">Email me a sign-in code</button>');
+      '<button id="sigo" style="' + mainBtn + '">Email me a sign-in code</button>' +
+      (window.pcStoreApp ? '<button id="sipwlink" style="' + linkBtn + '">Have a password? Sign in with it</button>' : ''));
     var go = document.getElementById('sigo'), input = document.getElementById('siemail');
+    if (document.getElementById('sipwlink')) document.getElementById('sipwlink').onclick = function () { askPassword(input.value.trim()); };
     try { input.value = localStorage.getItem('pc-email') || ''; } catch (e) {}
     function send() {
       var email = input.value.trim().toLowerCase();
@@ -122,6 +124,29 @@
     input.onkeydown = function (e) { if (e.key === 'Enter') verify(); };
     document.getElementById('siback').onclick = function () { askEmail(); };
     input.focus();
+  }
+
+  // Password sign-in, only offered in the Google Play app. It exists for Google's app reviewers, who can't
+  // receive the emailed code; their account and password are made by hand in Supabase (Authentication, Users).
+  function askPassword(email) {
+    signInBox().innerHTML = frame(
+      '<label style="display:block;margin-top:14px;font-weight:700">Email<input id="siemail" type="email" autocomplete="username" inputmode="email" style="' + field + '"></label>' +
+      '<label style="display:block;margin-top:14px;font-weight:700">Password<input id="sipw" type="password" autocomplete="current-password" style="' + field + '"></label>' +
+      '<button id="sigo" style="' + mainBtn + '">Sign in</button>' +
+      '<button id="siback" style="' + linkBtn + '">Use an email code instead</button>');
+    var go = document.getElementById('sigo'), em = document.getElementById('siemail'), pw = document.getElementById('sipw');
+    em.value = email || '';
+    function signIn() {
+      go.disabled = true;
+      go.textContent = 'Checking…';
+      sb.auth.signInWithPassword({ email: em.value.trim().toLowerCase(), password: pw.value }).then(function (r) {
+        if (r.error) { go.disabled = false; go.textContent = 'Sign in'; document.getElementById('sierr').textContent = /invalid/i.test(r.error.message) ? 'That email and password don\'t match.' : friendly(r.error); }
+      });
+    }
+    go.onclick = signIn;
+    pw.onkeydown = function (e) { if (e.key === 'Enter') signIn(); };
+    document.getElementById('siback').onclick = function () { askEmail(); };
+    (em.value ? pw : em).focus();
   }
 
   function friendly(err) {

@@ -1,6 +1,6 @@
 // Offline helper: keeps the app and the paint lists on the device so it opens fast.
 // Your own data always comes fresh from your account (requests to the database are never cached).
-const CACHE = 'paint-checker-cloud-2ca46c6d5f';
+const CACHE = 'paint-checker-cloud-1055024dae';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './icon-maskable.png', './apple-touch-icon.png'];
 
 // Also needed to open with no connection: the pages and the libraries. Saved on a best-effort basis, so one of them
