@@ -18,7 +18,7 @@
 // the signed-in person's rows in the Supabase database instead of a Google Sheet.
 // The database's own rules (Row Level Security) are what keep each person's data private; this file only asks.
 (function () {
-  var SB_URL = 'https://ewgbdtkeaoguwayymtay.supabase.co', SB_KEY = 'sb_publishable_md1uOYqL25oZVSb-AknbOg_gfpV7TMH', VERSION = '1055024dae';
+  var SB_URL = 'https://ewgbdtkeaoguwayymtay.supabase.co', SB_KEY = 'sb_publishable_md1uOYqL25oZVSb-AknbOg_gfpV7TMH', VERSION = '4cb92de669';
   var sb = window.supabase.createClient(SB_URL, SB_KEY, {
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, storageKey: 'pc-auth' }
   });
@@ -1021,7 +1021,13 @@
       (SHOP.gifts || []).map(function (g, i) {
         return '<div class="row" style="justify-content:space-between;align-items:center;margin-top:6px"><span>' + esc(g.email) + '</span>' +
           '<button type="button" class="ghost giftdel" data-i="' + i + '">Remove</button></div>';
-      }).join('') + '<div id="giftmsg" class="muted" style="margin-top:6px"></div></div></div>';
+      }).join('') + '<div id="giftmsg" class="muted" style="margin-top:6px"></div></div>' +
+      '<div style="margin-top:12px"><b>📱 Invite an Android tester</b><div class="muted">Opens a ready-written invite in Gmail; you just press Send. ' +
+      'They join the tester group, then the Google Play test.</div>' +
+      '<div class="row" style="margin-top:6px"><input id="testemail" type="email" placeholder="their-gmail@gmail.com" style="flex:1;min-width:0">' +
+      '<button type="button" id="testinvite">Write invite</button></div>' +
+      '<label class="muted" style="display:block;margin-top:6px"><input type="checkbox" id="testgift" checked> Also give them free access to every brand</label>' +
+      '<div id="testmsg" class="muted" style="margin-top:6px"></div></div></div>';
     box.innerHTML = h + '</div>';
 
     var msg = document.getElementById('shopmsg');
@@ -1078,6 +1084,39 @@
         };
       });
     }
+    var inv = document.getElementById('testinvite');
+    if (inv) inv.onclick = async function () {
+      var tmsg = document.getElementById('testmsg');
+      var email = document.getElementById('testemail').value.trim().toLowerCase();
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { tmsg.textContent = 'Type a whole email address.'; return; }
+      // Open the email first: browsers only allow a new tab straight from the click.
+      window.open(testerInviteUrl(email), '_blank');
+      var gifted = '';
+      if (document.getElementById('testgift').checked && !(SHOP.gifts || []).some(function (g) { return g.email === email; })) {
+        var r = await sb.from('gift_emails').insert({ email: email });
+        gifted = r.error ? ' (Free access didn\'t save: ' + friendly(r.error) + ')' : ' They now get every brand free.';
+        if (!r.error) { await loadShop(); renderShop(); }
+      }
+      document.getElementById('testmsg').textContent = '✉️ Invite opened in Gmail for ' + email + ', press Send there.' + gifted;
+    };
+  }
+
+  // Google Play closed test: testers join this Google Group ("anyone can join"), then opt in to the test.
+  var TESTER_GROUP = 'https://groups.google.com/g/bad-influence-hobby-testers';
+  var TESTER_OPTIN = 'https://play.google.com/apps/testing/com.badinfluencehobby.app';
+  var TESTER_INSTALL = 'https://play.google.com/store/apps/details?id=com.badinfluencehobby.app';
+  function testerInviteUrl(email) {
+    var body = 'Hi!\n\nThanks for helping me test my app, Bad Influence Hobby. It keeps track of miniature paints, finds matching colours and plans painting recipes. ' +
+      'Google needs testers to use it for 14 days before it can go on the Play Store.\n\n' +
+      'On your Android phone, signed in to the Play Store as ' + email + ':\n\n' +
+      '1. Join the tester group (tap "Join group"):\n' + TESTER_GROUP + '\n\n' +
+      '2. Join the test (tap "Become a tester"):\n' + TESTER_OPTIN + '\n\n' +
+      '3. Install the app from Google Play:\n' + TESTER_INSTALL + '\n\n' +
+      'If Gmail shows a "Redirect Notice" page, just tap the blue link on it. If the app says it isn\'t available, wait an hour and try step 3 again.\n\n' +
+      'Then sign in with your email (it sends you a code) and please keep the app installed for 14 days, opening it now and then. ' +
+      'Feedback is welcome at support@badinfluencehobby.com.\n\nThank you!';
+    return 'https://mail.google.com/mail/?view=cm&fs=1&to=' + encodeURIComponent(email) +
+      '&su=' + encodeURIComponent('Help me test my new app - Bad Influence Hobby') + '&body=' + encodeURIComponent(body);
   }
 
   // After a purchase, or "Restore purchases": read what this person has again; if it changed which paints they may
@@ -1900,11 +1939,15 @@
     var seen = {};
     CATALOG.forEach(function (p) { if (p.brand) seen[p.brand] = true; });
     CRAFT_LIST.forEach(function (b) { seen[b] = true; });
+    Object.keys(ART_BRANDS).forEach(function (b) { seen[b] = true; });
     return Object.keys(seen).sort(function (a, b) { return a.toLowerCase().localeCompare(b.toLowerCase()); });
   }
   function rangesFor(brand) {
     var seen = {};
     if (brand) CATALOG.forEach(function (p) { if (p.range && normName(p.brand) === normName(brand)) seen[p.range] = true; });
+    if (brand) Object.keys(ART_BRANDS).forEach(function (b) {
+      if (normName(b) === normName(brand)) ART_BRANDS[b].forEach(function (r) { seen[r] = true; });
+    });
     return Object.keys(seen).sort();
   }
   function fillSelect(sel, items, current, empty) {
@@ -2853,15 +2896,23 @@
   }
   var SEE_THROUGH = /^(Contrast|Speedpaint|Xpress|Wash \/ Shade|Ink \/ Glaze)$/;
   // Craft-store acrylics: kept in your list and recipes, but left out of the colour wheel, highlights and matches.
-  var CRAFT_BRANDS = /deco ?art|americana|folk ?art|apple barrel|craft ?smart|delta|ceramcoat|crafter'?s|anita'?s|tattered angels|waverly|amsterdam|liquitex basics|plaid/i;
+  var CRAFT_BRANDS = /deco ?art|americana|folk ?art|apple barrel|craft ?smart|delta|ceramcoat|crafter'?s|anita'?s|tattered angels|waverly|amsterdam|liquitex basics|plaid|artists? ?loft/i;
   var CRAFT_LIST = ['DecoArt', 'FolkArt', 'Apple Barrel', 'Craftsmart', 'Delta Creative', 'Crafter\'s Collection', 'Anita\'s', 'Tattered Angels', 'Amsterdam'];
   function isCraft(p) { return p.type === 'Craft'; }
+  // Art-store brands (markers, pencils, craft paint) and what each one makes; shown as brand and range suggestions.
+  var ART_BRANDS = {
+    'Copic': ['Alcohol markers'],
+    'Posca': ['Paint markers'],
+    'Tombow': ['Markers'],
+    'Artist Loft': ['Paint', 'Watercolor markers', 'Paint markers', 'Alcohol markers'],
+    'Faber-Castell': ['Colored pencils', 'Brush pens', 'Alcohol markers']
+  };
 
   // Works out a paint's type from its brand, range and name, for paints where you haven't picked one.
   function inferType(p) {
     var t = (p.range || '') + ' ' + (p.name || '');
     // Not paint in a pot: markers (Ohuhu, Gundam Markers, panel liners, paint pens...), coloured pencils, spray cans.
-    if (/^(ohuhu|artistro|posca|molotow|copic|stedi|winsor & newton promarker|touchfive|arteza markers?)$/i.test(p.brand || '') ||
+    if (/^(ohuhu|artistro|posca|molotow|copic|tombow|stedi|winsor & newton promarker|touchfive|arteza markers?)$/i.test(p.brand || '') ||
         /\bmarkers?\b|playmarkers?|panel liner|paint pen|\bpens?\b|brush pen/i.test(t)) return 'Marker';
     if (/colou?red pencils?|\bpencils?\b/i.test(t) || /prismacolor|polychromos|derwent/i.test(p.brand || '')) return 'Coloured pencil';
     if (/spray|aerosol|rattle ?can/i.test(t) && !/primer|surface/i.test(t)) return 'Spray paint';
@@ -4094,7 +4145,9 @@
     ab: 'Apple Barrel', 'apple barrel': 'Apple Barrel', cs: 'Craftsmart', craftsmart: 'Craftsmart', a: 'Anita\'s', 'anitas': 'Anita\'s',
     cwt: 'Tattered Angels', 'tattered angels': 'Tattered Angels', dc: 'Delta Creative', 'delta creative': 'Delta Creative',
     c: 'Crafter\'s Collection', 'crafters collection': 'Crafter\'s Collection', ai: 'Amsterdam', amsterdam: 'Amsterdam',
-    hm: 'Huge Miniatures', 'huge miniatures': 'Huge Miniatures', any: 'Any brand'
+    hm: 'Huge Miniatures', 'huge miniatures': 'Huge Miniatures', any: 'Any brand',
+    copic: 'Copic', posca: 'Posca', tombow: 'Tombow', 'artist loft': 'Artist Loft', 'artists loft': 'Artist Loft',
+    'faber castell': 'Faber-Castell', fabercastell: 'Faber-Castell'
   };
   function canonicalBrand(b) { var k = normName(b); return k ? (BRAND_ALIASES[k] || String(b).trim()) : ''; }
   // A shorthand word like MH, GW, V, 75 or Any (capitals only for the one-letter ones, so the word "a" isn't a brand).
