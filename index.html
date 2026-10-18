@@ -18,7 +18,7 @@
 // the signed-in person's rows in the Supabase database instead of a Google Sheet.
 // The database's own rules (Row Level Security) are what keep each person's data private; this file only asks.
 (function () {
-  var SB_URL = 'https://ewgbdtkeaoguwayymtay.supabase.co', SB_KEY = 'sb_publishable_md1uOYqL25oZVSb-AknbOg_gfpV7TMH', VERSION = '4cb92de669';
+  var SB_URL = 'https://ewgbdtkeaoguwayymtay.supabase.co', SB_KEY = 'sb_publishable_md1uOYqL25oZVSb-AknbOg_gfpV7TMH', VERSION = '19ac898214';
   var sb = window.supabase.createClient(SB_URL, SB_KEY, {
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, storageKey: 'pc-auth' }
   });
@@ -1101,18 +1101,15 @@
     };
   }
 
-  // Google Play closed test: testers join this Google Group ("anyone can join"), then opt in to the test.
-  var TESTER_GROUP = 'https://groups.google.com/g/bad-influence-hobby-testers';
-  var TESTER_OPTIN = 'https://play.google.com/apps/testing/com.badinfluencehobby.app';
-  var TESTER_INSTALL = 'https://play.google.com/store/apps/details?id=com.badinfluencehobby.app';
+  // Google Play closed test: testers join a Google Group ("anyone can join"), then opt in to the test.
+  // test.html on the site walks them through both steps plus the install.
+  var TESTER_PAGE = 'https://badinfluencehobby.com/test.html';
   function testerInviteUrl(email) {
     var body = 'Hi!\n\nThanks for helping me test my app, Bad Influence Hobby. It keeps track of miniature paints, finds matching colours and plans painting recipes. ' +
       'Google needs testers to use it for 14 days before it can go on the Play Store.\n\n' +
-      'On your Android phone, signed in to the Play Store as ' + email + ':\n\n' +
-      '1. Join the tester group (tap "Join group"):\n' + TESTER_GROUP + '\n\n' +
-      '2. Join the test (tap "Become a tester"):\n' + TESTER_OPTIN + '\n\n' +
-      '3. Install the app from Google Play:\n' + TESTER_INSTALL + '\n\n' +
-      'If Gmail shows a "Redirect Notice" page, just tap the blue link on it. If the app says it isn\'t available, wait an hour and try step 3 again.\n\n' +
+      'Everything you need is on this one page (open it on your Android phone, signed in to the Play Store as ' + email + '):\n' + TESTER_PAGE + '\n\n' +
+      'It has three buttons to tap in order: Join the group, Become a tester, then Install.\n\n' +
+      'If Gmail shows a "Redirect Notice" page, just tap the blue link on it.\n\n' +
       'Then sign in with your email (it sends you a code) and please keep the app installed for 14 days, opening it now and then. ' +
       'Feedback is welcome at support@badinfluencehobby.com.\n\nThank you!';
     return 'https://mail.google.com/mail/?view=cm&fs=1&to=' + encodeURIComponent(email) +
