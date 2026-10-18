@@ -18,7 +18,7 @@
 // the signed-in person's rows in the Supabase database instead of a Google Sheet.
 // The database's own rules (Row Level Security) are what keep each person's data private; this file only asks.
 (function () {
-  var SB_URL = 'https://ewgbdtkeaoguwayymtay.supabase.co', SB_KEY = 'sb_publishable_md1uOYqL25oZVSb-AknbOg_gfpV7TMH', VERSION = 'fc1cb30ba5';
+  var SB_URL = 'https://ewgbdtkeaoguwayymtay.supabase.co', SB_KEY = 'sb_publishable_md1uOYqL25oZVSb-AknbOg_gfpV7TMH', VERSION = 'd001514784';
   var sb = window.supabase.createClient(SB_URL, SB_KEY, {
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, storageKey: 'pc-auth' }
   });
@@ -790,10 +790,13 @@
   // Opened as the Google Play app (the Android app starts at /?app=android, or Android tells us in the referrer)?
   // Google Play doesn't allow selling unlocks there through Stripe, or pointing people elsewhere to buy, so the app
   // shows no prices, buy buttons or "get it" cards. Whatever someone has (bought on the website, or free access) works.
+  // Remembered for this visit only (sessionStorage): the app opens a fresh visit each time it starts, and a plain
+  // browser on the same phone must not get stuck in app mode (it used to be kept in localStorage for good).
   window.pcStoreApp = (function () {
     try {
-      if (/[?&]app=android\b/.test(location.search) || /^android-app:\/\/com\.badinfluencehobby\.app/.test(document.referrer)) localStorage.setItem('pc-store-app', 'android');
-      return localStorage.getItem('pc-store-app') === 'android';
+      localStorage.removeItem('pc-store-app');
+      if (/[?&]app=android\b/.test(location.search) || /^android-app:\/\/com\.badinfluencehobby\.app/.test(document.referrer)) sessionStorage.setItem('pc-store-app', 'android');
+      return sessionStorage.getItem('pc-store-app') === 'android';
     } catch (e) { return /[?&]app=android\b/.test(location.search); }
   })();
   var FREE_BRANDS = ['The Army Painter']; // free for everyone; used when a brand is first published (2026-10-14: owner's choice)
