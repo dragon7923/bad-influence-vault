@@ -18,7 +18,7 @@
 // the signed-in person's rows in the Supabase database instead of a Google Sheet.
 // The database's own rules (Row Level Security) are what keep each person's data private; this file only asks.
 (function () {
-  var SB_URL = 'https://ewgbdtkeaoguwayymtay.supabase.co', SB_KEY = 'sb_publishable_md1uOYqL25oZVSb-AknbOg_gfpV7TMH', VERSION = '19ac898214';
+  var SB_URL = 'https://ewgbdtkeaoguwayymtay.supabase.co', SB_KEY = 'sb_publishable_md1uOYqL25oZVSb-AknbOg_gfpV7TMH', VERSION = 'fc1cb30ba5';
   var sb = window.supabase.createClient(SB_URL, SB_KEY, {
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, storageKey: 'pc-auth' }
   });
@@ -210,7 +210,8 @@
       var el = document.getElementById('acct');
       if (!el) return;
       el.innerHTML = 'Signed in as ' + esc(session.user.email || '') + ' · <a href="#" id="signout" style="color:inherit">Sign out</a>' +
-        (ACCOUNT_EXTRAS ? '<div style="margin-top:6px"><a href="privacy.html" style="color:inherit">Privacy</a> · <a href="terms.html" style="color:inherit">Terms</a> · <a href="credits.html" style="color:inherit">Credits</a> · <a href="#" id="delacct" style="color:inherit">Delete my account</a></div>' : '');
+        (ACCOUNT_EXTRAS ? '<div style="margin-top:6px"><a href="privacy.html" style="color:inherit">Privacy</a> · <a href="terms.html" style="color:inherit">Terms</a> · <a href="credits.html" style="color:inherit">Credits</a> · <a href="#" id="delacct" style="color:inherit">Delete my account</a></div>' +
+          (window.pcStoreApp ? '' : '<div style="margin-top:10px"><a href="test.html" style="display:inline-block;padding:5px 12px;border:1px solid #2b3039;border-radius:999px;color:inherit;text-decoration:none;font-size:13px">📱 Test the Android app</a></div>') : '');
       if (ACCOUNT_EXTRAS) document.getElementById('delacct').onclick = function (e) { e.preventDefault(); deleteAccount(); };
       document.getElementById('signout').onclick = function (e) {
         e.preventDefault();
