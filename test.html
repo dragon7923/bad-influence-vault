@@ -40,23 +40,23 @@
 <body>
 <main>
   <h1>🎨 Test Bad Influence Hobby</h1>
-  <p>Thanks for helping! Do this <b>on your Android phone</b>, using the same Gmail that your Play Store uses. Three steps, in order:</p>
+  <p>Thanks for helping! Do this <b>on your Android phone</b>, using the same Gmail that your Play Store uses. Open this page in <b>Chrome</b>. Three steps, in order:</p>
 
   <div class="step" id="s1">
-    <span class="num">1</span><b>Sign up</b>
-    <p class="muted">Type the Gmail address your Android phone's Play Store uses, then tap <b>Sign me up</b>.
-      We add you to the testers, usually within an hour, and email you <b>"You're in!"</b>. Then do steps 2 and 3.</p>
-    <form id="signup" style="margin-top:10px">
-      <input id="semail" type="email" required autocomplete="email" inputmode="email" placeholder="you@gmail.com"
-        style="width:100%;box-sizing:border-box;padding:14px;border-radius:12px;border:1px solid #2b3039;background:#111317;color:#e9ebef;font-size:17px">
-      <button class="btn" type="submit" style="width:100%;border:0;cursor:pointer">✉️ Sign me up</button>
-    </form>
-    <p id="smsg" style="margin-top:10px;font-weight:700"></p>
+    <span class="num">1</span><b>Join the tester group</b>
+    <p class="muted">Make sure you're signed in to Google with the Gmail your phone's Play Store uses. Tap the button, then <b>Join group</b>.</p>
+    <div class="pic"><span class="cap">WHAT YOU'LL SEE</span>
+      <div class="play">Google Groups</div>
+      <h4>bad-influence-hobby-testers</h4>
+      <span class="gbtn tap" style="background:#1a73e8">Join group</span>
+      <div class="arrow">↑ tap this, then confirm if it asks</div>
+    </div>
+    <a class="btn" target="_blank" rel="noopener" href="https://groups.google.com/g/bad-influence-hobby-testers">Join the tester group</a>
   </div>
 
   <div class="step" id="s2">
     <span class="num">2</span><b>Join the test</b>
-    <p class="muted">After the "You're in!" email arrives: tap the button, then <b>Become a tester</b>. If it says "App not available", you haven't been added yet, or Google needs a few more minutes.</p>
+    <p class="muted">After joining the group: tap the button, then <b>Become a tester</b>. If it says "App not available", wait a few minutes and try again.</p>
     <div class="pic"><span class="cap">WHAT YOU'LL SEE</span>
       <div class="play">Google Play</div>
       <div><span class="icon">🎨</span><b>Bad Influence Hobby</b></div>
@@ -86,30 +86,6 @@
   </div>
 </main>
 <script>
-  // Sign-up goes straight to the database (public, write-only: tester_signup in supabase/011_tester_signups.sql).
-  var SB_URL = 'https://ewgbdtkeaoguwayymtay.supabase.co', SB_KEY = 'sb_publishable_md1uOYqL25oZVSb-AknbOg_gfpV7TMH';
-  document.getElementById('signup').addEventListener('submit', function (e) {
-    e.preventDefault();
-    var msg = document.getElementById('smsg'), btn = this.querySelector('button');
-    var email = document.getElementById('semail').value.trim().toLowerCase();
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { msg.textContent = 'Please type a whole email address.'; return; }
-    btn.disabled = true; btn.textContent = 'Signing you up…';
-    fetch(SB_URL + '/rest/v1/rpc/tester_signup', {
-      method: 'POST',
-      headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ p_email: email })
-    }).then(function (r) { return r.json(); }).then(function (res) {
-      btn.disabled = false; btn.textContent = '✉️ Sign me up';
-      if (res === 'ok') { msg.textContent = '✅ You\'re signed up! Watch for a "You\'re in!" email at ' + email + ' (usually within an hour), then do steps 2 and 3.'; document.getElementById('s1').classList.add('done'); }
-      else if (res === 'already') msg.textContent = '👍 ' + email + ' is already signed up. If you\'ve had the "You\'re in!" email, carry on with steps 2 and 3.';
-      else if (res === 'bad_email') msg.textContent = 'That email doesn\'t look right. Please check it.';
-      else if (res === 'full') msg.textContent = 'Sign-ups are full for now, sorry. Please try again in a day or two.';
-      else msg.textContent = 'Something went wrong. Please try again in a minute.';
-    }).catch(function () {
-      btn.disabled = false; btn.textContent = '✉️ Sign me up';
-      msg.textContent = 'Couldn\'t reach the server. Check your connection and try again.';
-    });
-  });
   // Grey out a step once its button has been tapped, so it's clear what's next.
   document.querySelectorAll('.step .btn').forEach(function (b) {
     b.addEventListener('click', function () { b.closest('.step').classList.add('done'); });
