@@ -11,6 +11,621 @@
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Bad Influence">
+  <script>
+// German words for Bad Influence Hobby (see i18n-engine.js for how they are used). Informal "du", as hobby apps do.
+// Hobby terms German painters use in English (Contrast, Layer, Base, Wash, Drybrush, range names) stay English.
+window.BIH_LANGS = window.BIH_LANGS || {};
+window.BIH_LANGS.de = {
+  exact: {
+    // ----- Tabs and page titles
+    'Home': 'Start', 'Paints': 'Farben', 'Match': 'Vergleich', 'Colours': 'Farbtöne', 'Recipes': 'Rezepte',
+    'Paint equivalents': 'Farb-Entsprechungen',
+    "Search any paint from any brand. I'll show which of your paints are the same colour, and the closest match in every other brand.":
+      'Suche eine beliebige Farbe einer beliebigen Marke. Ich zeige dir, welche deiner Farben denselben Farbton haben, und die beste Entsprechung in jeder anderen Marke.',
+    'Colour wheel': 'Farbkreis',
+    'Tap any colour to see which of your paints match it.': 'Tippe auf eine Farbe, um zu sehen, welche deiner Farben dazu passen.',
+    'Tap a colour on the wheel.': 'Tippe auf eine Farbe im Farbkreis.',
+    'Colour from a photo': 'Farbe aus einem Foto',
+    'Take or choose a photo of a mini, box art or a painting guide, then tap any spot to find your paints for that colour.':
+      'Mach oder wähle ein Foto einer Miniatur, eines Box-Covers oder einer Malanleitung und tippe dann auf eine Stelle, um deine Farben für diesen Farbton zu finden.',
+    '📷 Choose a photo': '📷 Foto wählen',
+    'Tap the photo to pick a colour.': 'Tippe auf das Foto, um eine Farbe auszuwählen.',
+    '🧪 Mix by drops': '🧪 Mischen nach Tropfen',
+    "Pick the paints you're mixing and how many drops of each. I'll show the colour you'll get and the paints closest to it.":
+      'Wähle die Farben, die du mischst, und wie viele Tropfen von jeder. Ich zeige dir den Farbton, der herauskommt, und die Farben, die ihm am nächsten sind.',
+    '＋ Add another paint': '＋ Weitere Farbe hinzufügen',
+    'Shades, highlights & harmonies': 'Schatten, Highlights & Harmonien',
+    "Pick a paint. I'll look through all your paints for the best recess shade, edge highlight and glaze, plus colours that go with it.":
+      'Wähle eine Farbe. Ich suche unter all deinen Farben den besten Schatten für Vertiefungen, das beste Kanten-Highlight und die beste Lasur, dazu passende Farben.',
+    'My paints': 'Meine Farben',
+    '🛒 Shopping list': '🛒 Einkaufsliste',
+    'All brands': 'Alle Marken', 'All types': 'Alle Arten',
+    'Sort by colour': 'Nach Farbe sortieren', 'Sort by name': 'Nach Name sortieren', 'Sort by brand': 'Nach Marke sortieren',
+    'Most bottles first': 'Meiste Flaschen zuerst', 'Newest first': 'Neueste zuerst',
+    'Show used-up': 'Aufgebrauchte zeigen', '✕ Clear filters': '✕ Filter löschen',
+
+    // ----- Adding paints
+    '📷 Scan a barcode': '📷 Barcode scannen', 'Scan a barcode': 'Barcode scannen',
+    'Point the camera at the bottle': 'Richte die Kamera auf die Flasche',
+    '📸 Take photos': '📸 Fotos machen', 'Reads the labels, one paint or many': 'Liest die Etiketten, eine Farbe oder viele',
+    '✍️ Or type a paint': '✍️ Oder Farbe eintippen', '✍️ Type a paint': '✍️ Farbe eintippen',
+    '📦 I own a whole range or set': '📦 Ich habe eine ganze Reihe oder ein Set', '📦 Add a whole range': '📦 Ganze Reihe hinzufügen',
+    'Point the camera at the barcode': 'Richte die Kamera auf den Barcode',
+    '📸 Take a photo instead': '📸 Stattdessen ein Foto machen',
+    'Cancel': 'Abbrechen', 'Take a photo': 'Foto machen', 'Take photo': 'Foto machen', 'Done': 'Fertig', '🖼 Gallery': '🖼 Galerie',
+    'Manage paint brands': 'Farbmarken verwalten',
+    'Pick a brand from the community paint list:': 'Wähle eine Marke aus der Community-Farbliste:',
+    'Add': 'Hinzufügen', "…or paste the brand's online shop link:": '…oder füge den Link zum Online-Shop der Marke ein:',
+    'Read shop': 'Shop lesen', 'Brands I know:': 'Marken, die ich kenne:', 'loading…': 'wird geladen…',
+    '🔍 e.g. Mephiston Red, 70.950, Speedpaint Hardened Leather': '🔍 z. B. Mephiston Red, 70.950, Speedpaint Hardened Leather',
+    '🔍 Base paint, e.g. Mephiston Red': '🔍 Grundfarbe, z. B. Mephiston Red',
+    '🔍 Try “yellows” or “citadel contrast”': '🔍 Probier „gelb“ oder „citadel contrast“',
+    'Name or number: Mephiston, 70.950, 067': 'Name oder Nummer: Mephiston, 70.950, 067',
+    'Brand name, e.g. Kimera Kolors': 'Markenname, z. B. Kimera Kolors', 'e.g. turbodork.com': 'z. B. turbodork.com',
+    'Error:': 'Fehler:',
+    '✅ Added': '✅ Hinzugefügt',
+    'paints. They are on the Catalog tab of your sheet.': 'Farben. Sie stehen im Catalog-Tab deiner Tabelle.',
+    'Downloading the': 'Lade die', 'Type the brand name and the shop link.': 'Gib den Markennamen und den Shop-Link ein.',
+    '… this can take up to a minute.': '… das kann bis zu einer Minute dauern.',
+    'Or carry on filling it in by hand.': 'Oder trag sie einfach von Hand ein.',
+    "I don't have a paint list for": 'Ich habe keine Farbliste für', 'Add the brand': 'Füge die Marke hinzu',
+    'so its paints get recognised.': 'damit ihre Farben erkannt werden.',
+    "'s paint list isn't included in your account, so fill this one in by hand.": ': Diese Farbliste ist in deinem Konto nicht enthalten, trag diese Farbe also von Hand ein.',
+    "'s paint list is locked. Unlock it to fill its paints in automatically, with their real colours.": ': Diese Farbliste ist gesperrt. Schalte sie frei, damit ihre Farben automatisch mit ihren echten Farbtönen ausgefüllt werden.',
+    'Unlock': 'Freischalten', 'for 99¢': 'für 99 ¢',
+    'Code': 'Code', 'Set': 'Set',
+    '🛑 You have this (qty': '🛑 Hast du schon (Anzahl', 'No match': 'Kein Treffer',
+    'You already have this at home': 'Das hast du schon zu Hause',
+    "You already have this paint at home. Don't buy it!": 'Diese Farbe hast du schon zu Hause. Nicht kaufen!',
+    '· qty': '· Anzahl', 'qty': 'Anzahl',
+    "✅ That's it. Remember this barcode": '✅ Genau die. Barcode merken',
+    '＋1 to the one I have': '＋1 zu der, die ich habe',
+    'Add it as a new entry anyway': 'Trotzdem als neuen Eintrag hinzufügen',
+    'Add to my paints': 'Zu meinen Farben hinzufügen', 'Is it one of yours?': 'Ist es eine von deinen?',
+    'Looks like a': 'Sieht aus wie eine', 'paint. Is it one of yours?': 'Farbe. Ist es eine von deinen?',
+    "Tap it and the barcode is saved, so next time it's instant. Not there? Add it below.":
+      'Tippe darauf, dann wird der Barcode gespeichert und beim nächsten Mal geht es sofort. Nicht dabei? Füge sie unten hinzu.',
+    'already has a barcode': 'hat schon einen Barcode', "That's it": 'Genau die',
+    'None of your paints match.': 'Keine deiner Farben passt.', 'Saving the barcode…': 'Barcode wird gespeichert…',
+    '🔗 Barcode saved. Next time this scan finds it straight away.': '🔗 Barcode gespeichert. Beim nächsten Scan wird sie sofort gefunden.',
+    'Add my own…': 'Eigene hinzufügen…', '➕ Add my own…': '➕ Eigene hinzufügen…',
+    'Choose a brand…': 'Marke wählen…', 'No range / not sure': 'Keine Reihe / nicht sicher',
+    'Reading barcode…': 'Barcode wird gelesen…',
+    'No barcode found — reading the label… (first time takes a few seconds)': 'Kein Barcode gefunden – lese das Etikett… (beim ersten Mal dauert es ein paar Sekunden)',
+    "Couldn't read it": 'Konnte es nicht lesen',
+    'Try again closer, in good light, with the barcode or the paint name in focus — or type it in.':
+      'Versuch es noch einmal näher, bei gutem Licht, mit dem Barcode oder dem Farbnamen scharf im Bild – oder tipp ihn ein.',
+    'Label says': 'Auf dem Etikett steht', '— checking your paints…': '– prüfe deine Farben…',
+    'Getting ready…': 'Wird vorbereitet…', 'Reading photo': 'Lese Foto', '… (each photo takes a little while)': '… (jedes Foto dauert ein wenig)',
+    '📸 Found': '📸 Gefunden:',
+    'Tick the ones that are really in your photo, then add them. Paints you already have start unticked.':
+      'Hake die an, die wirklich auf deinem Foto sind, und füge sie dann hinzu. Farben, die du schon hast, sind nicht angehakt.',
+    'Barcodes you already have:': 'Barcodes, die du schon hast:',
+    "I couldn't match. Scan those paints one at a time with 📷 Scan paint.": 'konnte ich nicht zuordnen. Scanne diese Farben einzeln mit 📷 Farbe scannen.',
+    '🛑 Have it (qty': '🛑 Schon da (Anzahl', 'New': 'Neu',
+    "I couldn't read any paint names. Try closer, with the labels facing the camera and in good light, or add them below.":
+      'Ich konnte keine Farbnamen lesen. Versuch es näher, mit den Etiketten zur Kamera und bei gutem Licht, oder füge sie unten hinzu.',
+    'Missed one? Find it and add it to this list:': 'Eine übersehen? Such sie und füge sie dieser Liste hinzu:',
+    'e.g. camo green, 70.950, WP1401': 'z. B. camo green, 70.950, WP1401',
+    'ticked paint': 'angehakte Farbe(n)', 'Adding': 'Füge', '🗂️ See my paints': '🗂️ Meine Farben ansehen',
+    'No barcode found': 'Kein Barcode gefunden', 'Take a photo of the paint': 'Mach ein Foto der Farbe',
+    'The camera is blocked. Allow the camera for this app in your phone settings, or tap 🖼 Gallery.':
+      'Die Kamera ist blockiert. Erlaube die Kamera für diese App in den Handy-Einstellungen oder tippe auf 🖼 Galerie.',
+    "The camera didn't start (": 'Die Kamera ist nicht gestartet (', '). Tap 🖼 Gallery, or try again.': '). Tippe auf 🖼 Galerie oder versuch es noch einmal.',
+    'Take another, or tap Done': 'Mach noch eins oder tippe auf Fertig', 'From photos': 'Aus Fotos',
+    'Take photos of your paints, labels facing the camera': 'Fotografiere deine Farben, Etiketten zur Kamera',
+    '📷 Scanning and photos': '📷 Scannen und Fotos',
+    "Barcode scanning and reading labels from photos aren't included in your account. Type the paint's name or number in the box above instead.":
+      'Barcode-Scannen und Etiketten aus Fotos lesen sind in deinem Konto nicht enthalten. Tippe stattdessen den Namen oder die Nummer der Farbe oben ins Feld.',
+    'Barcode scanning (beta) and reading labels from photos come with': 'Barcode-Scannen (Beta) und Etiketten aus Fotos lesen gibt es mit',
+    '($2.99 a month):': '(2,99 $ im Monat):',
+    'point the camera at a bottle to see in a second whether you already own it, or photograph a shelf to add many paints at once.':
+      'richte die Kamera auf eine Flasche und sieh in einer Sekunde, ob du sie schon hast, oder fotografiere ein Regal, um viele Farben auf einmal hinzuzufügen.',
+    '🔓 See All brands plans (7-day free trial)': '🔓 „Alle Marken“-Angebote ansehen (7 Tage gratis testen)',
+    "Or type the paint's name or number in the box above.": 'Oder tippe den Namen oder die Nummer der Farbe oben ins Feld.',
+    'Checking…': 'Wird geprüft…', 'Looking for “': 'Suche nach „', '✅ You own': '✅ Du hast', 'matches': 'Treffer',
+    'Tap one to see it.': 'Tippe eine an, um sie zu sehen.', '— qty': '– Anzahl',
+    'Paints matching “': 'Farben passend zu „', '” — tap the right one:': '“ – tippe die richtige an:',
+    '✅ You have': '✅ Du hast', '＋ Add': '＋ Hinzufügen',
+    'More paints match. Type a bit more of the name, range or number to narrow it down.':
+      'Es passen noch mehr Farben. Tippe etwas mehr vom Namen, der Reihe oder der Nummer, um es einzugrenzen.',
+    '🔎 Check barcode': '🔎 Barcode prüfen', 'Not listed? Add it yourself': 'Nicht dabei? Selbst hinzufügen',
+    '✍️ Not listed? Add it yourself': '✍️ Nicht dabei? Selbst hinzufügen',
+    'Not in the paint list. Add “': 'Nicht in der Farbliste. „', '” yourself': '“ selbst hinzufügen',
+    '✅ You already have this. Tap ＋1 if you bought another.': '✅ Die hast du schon. Tippe ＋1, wenn du noch eine gekauft hast.',
+    'Which one? Tap ＋ Add next to it.': 'Welche? Tippe daneben auf ＋ Hinzufügen.',
+    'Loading the paint list…': 'Farbliste wird geladen…',
+    'Brand…': 'Marke…', 'Range…': 'Reihe…', '· you already have': '· hast du schon', '(left unticked)': '(nicht angehakt)',
+    ". Untick any you don't have.": '. Entferne den Haken bei allen, die du nicht hast.',
+    'Tick all': 'Alle anhaken', 'Untick all': 'Alle abhaken', 'Tick the paints to add': 'Hake die Farben an, die du hinzufügen willst',
+    'paints…': 'Farben…', 'paints': 'Farben', '. Type the next one.': '. Tippe die nächste ein.', 'Adding…': 'Wird hinzugefügt…',
+    'Paint': 'Farbe', ': you now have': ': du hast jetzt', 'Type the next one.': 'Tippe die nächste ein.',
+    "⚠️ You had it, but it's used up": '⚠️ Hattest du, aber sie ist aufgebraucht',
+    '✅ You have it at home!': '✅ Hast du zu Hause!', "Quantity is 0, so it's worth buying.": 'Anzahl ist 0, kaufen lohnt sich also.',
+    "Don't buy it.": 'Nicht kaufen.', 'Qty:': 'Anzahl:', 'Running low': 'Wird knapp',
+    '🛒 Add to shopping list': '🛒 Auf die Einkaufsliste', '🛒 Running low? Add to list': '🛒 Wird knapp? Auf die Liste',
+    '❌ Not in your collection': '❌ Nicht in deiner Sammlung', 'This is a': 'Das ist eine',
+    'Or fill it in yourself below.': 'Oder trag sie unten selbst ein.', '✍️ Add a paint': '✍️ Farbe hinzufügen',
+    'Pick it from the paint list, or fill in the boxes yourself. Not listed? Choose “Add my own” under Brand or Range.':
+      'Wähle sie aus der Farbliste oder füll die Felder selbst aus. Nicht dabei? Wähle „Eigene hinzufügen“ bei Marke oder Reihe.',
+    'This is': 'Das ist', '. Bought it? Add it:': '. Gekauft? Füge sie hinzu:', 'Bought it? Add it:': 'Gekauft? Füge sie hinzu:',
+    '🔎 New barcode: which paint is it?': '🔎 Neuer Barcode: Welche Farbe ist das?',
+    "I haven't seen barcode": 'Ich kenne den Barcode', "before. If it's one of your paints, tap it below": 'noch nicht. Wenn es eine deiner Farben ist, tippe sie unten an',
+    "and next time it's instant. If you don't have it, add it at the bottom.": 'und beim nächsten Mal geht es sofort. Wenn du sie nicht hast, füge sie ganz unten hinzu.',
+    '✨ Filled in from the barcode database: “': '✨ Aus der Barcode-Datenbank ausgefüllt: „', '” — check it before saving.': '“ – prüf es vor dem Speichern.',
+    'Or find it in the paint list:': 'Oder such sie in der Farbliste:',
+    'e.g. mephiston, 70.950, WP1401, pro acryl 13': 'z. B. mephiston, 70.950, WP1401, pro acryl 13',
+    'Brand': 'Marke', 'Type the brand name': 'Markenname eingeben', 'Range': 'Reihe', 'Type the range, e.g. Layer': 'Reihe eingeben, z. B. Layer',
+    'Paint name': 'Farbname', 'Type': 'Art', 'Regular': 'Normal', 'Notes (optional)': 'Notizen (optional)',
+    '📷 Reading the label…': '📷 Etikett wird gelesen…', '📷 Read from the label — tap the right one:': '📷 Vom Etikett gelesen – tippe die richtige an:',
+    'Saving…': 'Wird gespeichert…', 'Add paint': 'Farbe hinzufügen', '✕ Close': '✕ Schließen', '＋ Add paint': '＋ Farbe hinzufügen',
+
+    // ----- Home
+    'Loading your paints…': 'Deine Farben werden geladen…', 'Your paints': 'Deine Farben', 'Search your paints': 'Deine Farben durchsuchen',
+    'Start your collection': 'Starte deine Sammlung',
+    'Add the paints you own, and the app tells you what you have, what goes together, and what to buy.':
+      'Füge die Farben hinzu, die du hast, und die App zeigt dir, was du hast, was zusammenpasst und was du kaufen solltest.',
+    'In your collection': 'In deiner Sammlung', 'Used up': 'Aufgebraucht', 'To buy': 'Zu kaufen', 'Recently added': 'Zuletzt hinzugefügt',
+    'See all': 'Alle ansehen', 'On your shopping list': 'Auf deiner Einkaufsliste', 'running low': 'wird knapp',
+    'paints and': 'Farben und', 'markers': 'Marker', 'marker': 'Marker',
+
+    // ----- Colour families (chips) and paint types
+    'Reds': 'Rottöne', 'Oranges': 'Orangetöne', 'Yellows': 'Gelbtöne', 'Greens': 'Grüntöne', 'Blues': 'Blautöne', 'Purples': 'Violetttöne',
+    'Pinks': 'Rosatöne', 'Browns': 'Brauntöne', 'Skin tones': 'Hauttöne', 'Greys': 'Grautöne', 'Blacks': 'Schwarztöne', 'Whites': 'Weißtöne',
+    'Metallics': 'Metallics', 'Pigment powder': 'Pigmentpulver', 'Spray paint': 'Sprühfarbe', 'Coloured pencil': 'Buntstift',
+    'Other': 'Sonstige', 'coloured pencil': 'Buntstift', 'coloured pencils': 'Buntstifte', 'pigment powders': 'Pigmentpulver',
+    'Alcohol markers': 'Alkoholmarker', 'Paint markers': 'Lackmarker', 'Watercolor markers': 'Aquarellmarker', 'Colored pencils': 'Buntstifte',
+    'Brush pens': 'Pinselstifte', 'Craft paints': 'Bastelfarben',
+    'Hobby paints only (': 'Nur Hobbyfarben (', 'Paints only, no markers or sprays (': 'Nur Farben, keine Marker oder Sprays (',
+    'You own': 'Du hast', 'Here’s the': 'Hier ist', 'Here are the': 'Hier sind', 'matching “': 'passend zu „', 'you own': 'die du hast',
+    'Show': 'Zeige', 'Show only': 'Nur zeigen:', 'Other colours': 'Andere Farbtöne',
+    "You don't own any paints that match. Try another colour or word.": 'Du hast keine passenden Farben. Probier einen anderen Farbton oder ein anderes Wort.',
+    'No paints yet — scan one to start!': 'Noch keine Farben – scanne eine, um loszulegen!',
+    'Tap for quantity, type, shades, highlights and harmonies': 'Tippen für Anzahl, Art, Schatten, Highlights und Harmonien',
+    'Colour guessed from the name': 'Farbton aus dem Namen geschätzt',
+
+    // ----- Colour help
+    'Great match': 'Sehr passend', 'Good': 'Gut', 'Stretch': 'Notlösung',
+    'a little lighter': 'etwas heller', 'noticeably lighter': 'deutlich heller', 'much lighter': 'viel heller',
+    'a little darker': 'etwas dunkler', 'noticeably darker': 'deutlich dunkler', 'much darker': 'viel dunkler',
+    'same hue': 'gleicher Farbton', 'very close hue': 'sehr ähnlicher Farbton', 'slightly shifted hue': 'leicht verschobener Farbton', 'different hue': 'anderer Farbton',
+    'translucent, so it may need two coats': 'durchscheinend, braucht eventuell zwei Schichten',
+    'a wash, so it runs into the recesses': 'ein Wash, läuft also in die Vertiefungen', 'adds colour': 'gibt Farbe dazu',
+    'same hue — deepens and smooths the colour': 'gleicher Farbton – vertieft und glättet die Farbe',
+    'neighbouring hue — shifts the colour': 'benachbarter Farbton – verschiebt die Farbe', 'different hue — a strong tint': 'anderer Farbton – starke Tönung',
+    '· thin it and use several coats': '· verdünnen und mehrere Schichten auftragen',
+    'Complementary': 'Komplementär', 'Opposite colours: the strongest contrast. Great for spot colours and details.':
+      'Gegenüberliegende Farben: der stärkste Kontrast. Super für Akzentfarben und Details.',
+    'Analogous': 'Analog', 'Neighbours on the wheel: calm, natural-looking schemes.': 'Nachbarn im Farbkreis: ruhige, natürlich wirkende Farbschemata.',
+    'Split complementary': 'Geteilt komplementär', 'The two neighbours of the opposite colour: strong contrast that clashes less.':
+      'Die beiden Nachbarn der Gegenfarbe: starker Kontrast, der sich weniger beißt.',
+    'Triadic': 'Triade', 'Three evenly spaced colours: bold and balanced.': 'Drei gleichmäßig verteilte Farben: kräftig und ausgewogen.',
+    'Tetradic': 'Tetrade', 'Two opposite pairs: rich schemes. Let one colour lead.': 'Zwei gegenüberliegende Paare: reiche Farbschemata. Lass eine Farbe führen.',
+    'Square': 'Quadrat', 'Four evenly spaced colours: lively. Keep one dominant.': 'Vier gleichmäßig verteilte Farben: lebendig. Lass eine dominieren.',
+    'Colour harmonies': 'Farbharmonien',
+    'Harmonies need a real colour. Greys, blacks, whites and metallics go with anything.':
+      'Harmonien brauchen einen echten Farbton. Grau, Schwarz, Weiß und Metallics passen zu allem.',
+    'Colour on the wheel': 'Farbton im Farbkreis', 'None of your paints is near this colour': 'Keine deiner Farben liegt in der Nähe dieses Farbtons',
+    '· ✓ yours': '· ✓ deine', 'No paint by that name.': 'Keine Farbe mit diesem Namen.',
+    "Painter's colour wheel": 'Farbkreis für Maler',
+    'Your paints closest to this colour': 'Deine Farben, die diesem Farbton am nächsten sind',
+    'None of your paints have a known colour yet.': 'Bei keiner deiner Farben ist der Farbton bisher bekannt.',
+    "You don't own any metallics yet.": 'Du hast noch keine Metallics.',
+    'Very close': 'Sehr nah', 'Close': 'Nah', 'Similar': 'Ähnlich', 'Closest you have': 'Am nächsten',
+    'Wheel colour | your paint': 'Farbkreis-Farbton | deine Farbe', '✨ Colour help': '✨ Farbhilfe',
+    'these two get you close': 'diese zwei bringen dich nah heran', 'Equal parts': 'Zu gleichen Teilen', 'to 1 part': 'zu 1 Teil',
+    'Mix it from your paints': 'Misch es aus deinen Farben', 'Target | the mix': 'Ziel | die Mischung',
+    'Mixes are an estimate. Try a little on your palette first.': 'Mischungen sind eine Schätzung. Probier erst ein bisschen auf deiner Palette.',
+    'Remove': 'Entfernen', 'Change paint': 'Farbe ändern', '✅ yours': '✅ deine',
+    'No paint with a known colour matches that.': 'Keine Farbe mit bekanntem Farbton passt dazu.',
+    'Pick at least one more paint.': 'Wähle mindestens eine weitere Farbe.', 'Your mix | this paint': 'Deine Mischung | diese Farbe',
+    'Your paints closest to this mix': 'Deine Farben, die dieser Mischung am nächsten sind', 'Closest paints to buy': 'Die nächsten Farben zum Kaufen',
+    'The mix is an estimate. Try a little on your palette first.': 'Die Mischung ist eine Schätzung. Probier erst ein bisschen auf deiner Palette.',
+    "Metallic, wash and Contrast-type paints don't mix like normal paint, so this one is rougher.":
+      'Metallic-, Wash- und Contrast-Farben mischen sich nicht wie normale Farbe, deshalb ist diese Schätzung ungenauer.',
+    'Colour from your photo': 'Farbton aus deinem Foto',
+
+    // ----- Paint screen
+    'Add to a recipe': 'Zu einem Rezept hinzufügen', '📋 Add to a recipe': '📋 Zu einem Rezept hinzufügen',
+    'Loading your recipes…': 'Deine Rezepte werden geladen…', 'Recipe': 'Rezept', 'Choose a recipe…': 'Rezept wählen…',
+    '＋ New recipe…': '＋ Neues Rezept…', 'New recipe name, e.g. Ultramarines': 'Name des neuen Rezepts, z. B. Ultramarines',
+    'Part (optional)': 'Teil (optional)', 'e.g. Armour, Cape, Base': 'z. B. Rüstung, Umhang, Base', 'Step': 'Schritt', '💾 Add': '💾 Hinzufügen',
+    'Choose a recipe first.': 'Wähle zuerst ein Rezept.', 'Give the new recipe a name.': 'Gib dem neuen Rezept einen Namen.',
+    '✅ Added to': '✅ Hinzugefügt zu', 'Open the recipe': 'Rezept öffnen', 'Paint type': 'Farbart', '🛒 Running low': '🛒 Wird knapp',
+    'Barcode saved ✓ · scan another bottle': 'Barcode gespeichert ✓ · scanne die nächste Flasche', 'Scan its barcode': 'Barcode scannen',
+    '🗑 Delete this paint': '🗑 Diese Farbe löschen', '← Back': '← Zurück',
+    "📷 Barcode scanning isn't included in your account.": '📷 Barcode-Scannen ist in deinem Konto nicht enthalten.', 'See plans': 'Angebote ansehen',
+    '📷 Barcode scanning (beta) comes with All brands (7-day free trial).': '📷 Barcode-Scannen (Beta) gibt es mit „Alle Marken“ (7 Tage gratis testen).',
+    'Barcode scanning needs the installed app (or Chrome), not the Google page.': 'Barcode-Scannen braucht die installierte App (oder Chrome), nicht die Google-Seite.',
+    "The camera didn't start. Allow the camera for this app and try again.": 'Die Kamera ist nicht gestartet. Erlaube die Kamera für diese App und versuch es noch einmal.',
+    '⚠️ That barcode is already saved on': '⚠️ Dieser Barcode ist schon gespeichert bei', 'Saving barcode': 'Barcode wird gespeichert',
+    '🔗 Barcode saved. Scanning this bottle now finds it straight away.': '🔗 Barcode gespeichert. Ein Scan dieser Flasche findet sie jetzt sofort.',
+    '⚠️ Tap again to delete it for good': '⚠️ Nochmal tippen, um sie endgültig zu löschen', 'Deleting…': 'Wird gelöscht…',
+    "I don't know this paint's exact colour, so I can't match a highlight to it.": 'Ich kenne den genauen Farbton dieser Farbe nicht, deshalb kann ich kein passendes Highlight finden.',
+    '▼ Recess shade': '▼ Schatten für Vertiefungen', 'None of your': 'Keine deiner',
+    'is darker in a colour that would work as a shade.': 'ist dunkler und hat einen Farbton, der als Schatten taugt.',
+    '▲ Edge highlight': '▲ Kanten-Highlight', 'is lighter in a colour that would work as a highlight.': 'ist heller und hat einen Farbton, der als Highlight taugt.',
+    '◆ Glaze': '◆ Lasur',
+    "You don't own a see-through paint (Contrast, Speedpaint, glaze or ink) in a colour that suits this.":
+      'Du hast keine durchscheinende Farbe (Contrast, Speedpaint, Lasur oder Tinte) in einem passenden Farbton.',
+    "of your paints have no known colour, so I couldn't check them.": 'deiner Farben haben keinen bekannten Farbton, deshalb konnte ich sie nicht prüfen.',
+    '✓ On your shopping list': '✓ Auf deiner Einkaufsliste', 'Type the paint name first': 'Gib zuerst den Farbnamen ein', 'Want': 'Gewünscht',
+
+    // ----- Shopping list
+    'Loading your shopping list…': 'Deine Einkaufsliste wird geladen…', '🔍 Add a paint to the list, e.g. Khorne Red': '🔍 Farbe zur Liste hinzufügen, z. B. Khorne Red',
+    'Your shopping list is empty.': 'Deine Einkaufsliste ist leer.',
+    "Add paints here, from the Match tab, from a scan, or from a paint's screen when you're running low.":
+      'Füge hier Farben hinzu, über den Vergleich-Tab, über einen Scan oder über die Seite einer Farbe, wenn sie knapp wird.',
+    'paint': 'Farbe', 'to buy': 'zu kaufen', '✓ Bought': '✓ Gekauft',
+
+    // ----- Match
+    'No match in the paint lists.': 'Kein Treffer in den Farblisten.', 'same colour': 'gleicher Farbton', 'Same colour': 'Gleicher Farbton',
+    'No paint by that name with a known colour.': 'Keine Farbe mit diesem Namen und bekanntem Farbton.', 'Searched paint | this paint': 'Gesuchte Farbe | diese Farbe',
+    '✅ You have this (qty': '✅ Hast du (Anzahl', '✅ You have this one (qty': '✅ Die hast du (Anzahl', "You don't have this one": 'Die hast du nicht',
+    "I don't know this paint's colour, so I can't match it.": 'Ich kenne den Farbton dieser Farbe nicht, deshalb kann ich sie nicht vergleichen.',
+    'Your paints that match': 'Deine passenden Farben', 'Equivalents in other brands': 'Entsprechungen in anderen Marken',
+    'No close match in the other brands I know.': 'Keine nahe Entsprechung in den anderen Marken, die ich kenne.',
+    'Any brand': 'Jede Marke', 'have it': 'hast du',
+
+    // ----- Recipes (techniques stay English, as German painters use them)
+    'Painting recipes': 'Malrezepte',
+    'Save how you painted a unit (the paint for the cape, the shade, the highlight) so you can paint more to match.':
+      'Speichere, wie du eine Einheit bemalt hast (die Farbe für den Umhang, den Schatten, das Highlight), damit du weitere passend bemalen kannst.',
+    '＋ New recipe': '＋ Neues Rezept', '📋 Paste a guide': '📋 Anleitung einfügen', 'parts ·': 'Teile ·', 'steps ·': 'Schritte ·',
+    'No recipes yet. Tap “＋ New recipe”, or paste a guide from your notebook, a video or a website.':
+      'Noch keine Rezepte. Tippe auf „＋ Neues Rezept“ oder füge eine Anleitung aus deinem Notizbuch, einem Video oder von einer Website ein.',
+    '← All recipes': '← Alle Rezepte', '✏️ Edit': '✏️ Bearbeiten', 'Steps': 'Schritte', '＋ Add a step to': '＋ Schritt hinzufügen zu',
+    'this part': 'diesem Teil', 'No steps yet. Add a part below.': 'Noch keine Schritte. Füge unten einen Teil hinzu.',
+    '＋ Add a new part': '＋ Neuen Teil hinzufügen', 'Part name, e.g. Cape, Gun, Base': 'Name des Teils, z. B. Umhang, Waffe, Base',
+    'Brand (MH, GW, V…)': 'Marke (MH, GW, V…)', 'Paint, e.g. Camo Green': 'Farbe, z. B. Camo Green',
+    'Notes, e.g. thin 2:1, only the tops': 'Notizen, z. B. 2:1 verdünnt, nur die Kanten',
+    'Give the part a name first.': 'Gib dem Teil zuerst einen Namen.', 'Type a paint (or a note) first.': 'Gib zuerst eine Farbe (oder eine Notiz) ein.',
+    '← Cancel': '← Abbrechen', 'Edit recipe': 'Rezept bearbeiten', 'New recipe': 'Neues Rezept', 'Unit or project': 'Einheit oder Projekt',
+    'e.g. Tanith First and Only': 'z. B. Tanith First and Only', 'Notes (optional; links to videos work too)': 'Notizen (optional; Links zu Videos gehen auch)',
+    '💾 Save recipe': '💾 Rezept speichern', 'Delete recipe': 'Rezept löschen', 'Part name, e.g. Cape': 'Name des Teils, z. B. Umhang',
+    'Notes, e.g. thin 2:1, only the tops, 50/50 mix': 'Notizen, z. B. 2:1 verdünnt, nur die Kanten, 50/50 gemischt',
+    'Open this paint': 'Diese Farbe öffnen', 'bottles': 'Flaschen', 'bottle': 'Flasche',
+    'Copy': 'Kopieren', 'Move up': 'Nach oben', 'Move down': 'Nach unten', '🗑 Remove': '🗑 Entfernen', '＋ Add a step to this part': '＋ Schritt zu diesem Teil hinzufügen',
+    'New part': 'Neuer Teil', 'Give the recipe a name first.': 'Gib dem Rezept zuerst einen Namen.',
+    'Tap “Delete recipe” again to delete it for good.': 'Tippe noch einmal auf „Rezept löschen“, um es endgültig zu löschen.',
+    'Paste a painting guide': 'Malanleitung einfügen',
+    'Type up a notebook page, or paste steps from a video description or website. Notebook style works:':
+      'Tipp eine Notizbuchseite ab oder füge Schritte aus einer Videobeschreibung oder von einer Website ein. Notizbuch-Stil funktioniert:',
+    '“Part - Technique - Brand - Paint”, with brand shorthand like MH, GW, V, AP, 75, DA. Lines starting with “-” carry on the part above.':
+      '„Teil - Technik - Marke - Farbe“, mit Marken-Kürzeln wie MH, GW, V, AP, 75, DA. Zeilen, die mit „-“ beginnen, gehören zum Teil darüber.',
+    'Leave a blank line between groups.': 'Lass zwischen Gruppen eine Leerzeile.', 'Turn into steps': 'In Schritte umwandeln',
+    'Check the parts, techniques, brands and paints, then save.': 'Prüf die Teile, Techniken, Marken und Farben und speichere dann.',
+    'Type “70.950” or “Mephiston” and the brand, range, name and type are done, with the paint\'s real colour for shade, highlight and colour-harmony suggestions. Without it, you type those in yourself (The Army Painter fills in free).':
+      'Tippe „70.950“ oder „Mephiston“ und Marke, Reihe, Name und Art sind ausgefüllt, mit dem echten Farbton der Farbe für Vorschläge zu Schatten, Highlights und Farbharmonien. Ohne das trägst du sie selbst ein (The Army Painter füllt sich gratis aus).',
+    "⚠️ That connection link doesn't look right. It starts with https://script.google.com/macros/s/ and ends with /exec.":
+      '⚠️ Dieser Verbindungslink sieht nicht richtig aus. Er beginnt mit https://script.google.com/macros/s/ und endet mit /exec.',
+    'Your paints (with amounts, barcodes and notes), recipes and shopping list are copied into this account. Your Google Sheet is only read, never changed. Anything already here is skipped.':
+      'Deine Farben (mit Anzahl, Barcodes und Notizen), Rezepte und Einkaufsliste werden in dieses Konto kopiert. Deine Google-Tabelle wird nur gelesen, nie verändert. Was schon da ist, wird übersprungen.',
+    'Unknown change:': 'Unbekannte Änderung:', 'Unknown action:': 'Unbekannte Aktion:',
+    'Found': 'Gefunden:', 'steps. Check the parts, techniques, brands and paints, then save.': 'Schritte. Prüf die Teile, Techniken, Marken und Farben und speichere dann.',
+
+    // ----- Sign in (cloud-shim.js)
+    'What we keep and how to delete it': 'Was wir speichern und wie du es löschst', 'Terms': 'Nutzungsbedingungen',
+    'Continue with Google': 'Weiter mit Google', 'or use an email code': 'oder nutze einen E-Mail-Code',
+    'Sign in to see your paints on any phone or computer. No password: we email you a sign-in code.':
+      'Melde dich an, um deine Farben auf jedem Handy oder Computer zu sehen. Kein Passwort: Wir schicken dir einen Anmeldecode per E-Mail.',
+    'Email': 'E-Mail', 'you@example.com': 'du@beispiel.de', 'Email me a sign-in code': 'Anmeldecode per E-Mail schicken',
+    'Have a password? Sign in with it': 'Du hast ein Passwort? Damit anmelden', "That doesn't look like an email address.": 'Das sieht nicht nach einer E-Mail-Adresse aus.',
+    'Sending…': 'Wird gesendet…', 'We sent an email to': 'Wir haben eine E-Mail geschickt an',
+    "Type the code from it here. If it isn't there in a minute, check your spam folder.": 'Gib den Code daraus hier ein. Wenn sie in einer Minute nicht da ist, schau in deinen Spam-Ordner.',
+    'Sign-in code': 'Anmeldecode', 'Sign in': 'Anmelden', 'Use a different email, or send it again': 'Andere E-Mail nutzen oder erneut senden',
+    'Type the whole code from the email.': 'Gib den ganzen Code aus der E-Mail ein.', 'Password': 'Passwort', 'Use an email code instead': 'Stattdessen E-Mail-Code nutzen',
+    "That email and password don't match.": 'E-Mail und Passwort passen nicht zusammen.',
+    'We just sent you one. Wait a minute before asking for another.': 'Wir haben dir gerade einen geschickt. Warte eine Minute, bevor du einen neuen anforderst.',
+    'Too many sign-in emails for now. Try again in about an hour.': 'Gerade zu viele Anmelde-E-Mails. Versuch es in etwa einer Stunde noch einmal.',
+    "We couldn't send the email just now. Try again in a few minutes.": 'Wir konnten die E-Mail gerade nicht senden. Versuch es in ein paar Minuten noch einmal.',
+    "That code didn't work or has expired. Check it, or send a new one.": 'Dieser Code hat nicht funktioniert oder ist abgelaufen. Prüf ihn oder fordere einen neuen an.',
+    "Couldn't reach the server. Try again in a moment.": 'Server nicht erreichbar. Versuch es gleich noch einmal.', 'You are offline.': 'Du bist offline.',
+    "That sign-in link has expired or was already used. Enter your email and we'll send a new one.":
+      'Dieser Anmeldelink ist abgelaufen oder wurde schon benutzt. Gib deine E-Mail ein, dann schicken wir dir einen neuen.',
+    'Signed in as': 'Angemeldet als', 'Sign out': 'Abmelden', 'Privacy': 'Datenschutz', 'Credits': 'Danksagungen',
+    '📱 Test the Android app': '📱 Android-App testen',
+    'Sign out on this device? Your paints stay saved in your account.': 'Auf diesem Gerät abmelden? Deine Farben bleiben in deinem Konto gespeichert.',
+    'Cancel your subscription first: tap "Manage my subscription" in the Paint brands card, then delete your account.':
+      'Kündige zuerst dein Abo: Tippe in der Karte „Farbmarken“ auf „Mein Abo verwalten“ und lösche dann dein Konto.',
+    'Delete my account': 'Mein Konto löschen', 'This removes your account': 'Damit wird dein Konto gelöscht',
+    "and everything in it: your paints, recipes and shopping list, on every device. It can't be undone.":
+      'mit allem darin: deine Farben, Rezepte und Einkaufsliste, auf jedem Gerät. Das lässt sich nicht rückgängig machen.',
+    'Type DELETE to confirm': 'Zum Bestätigen DELETE eingeben', 'Delete my account for good': 'Mein Konto endgültig löschen', 'Keep my account': 'Konto behalten',
+    'Type the word DELETE in the box to confirm.': 'Gib zum Bestätigen das Wort DELETE in das Feld ein.',
+    'You need a connection to delete your account.': 'Zum Löschen deines Kontos brauchst du eine Verbindung.',
+    'Your account and everything in it has been deleted.': 'Dein Konto und alles darin wurde gelöscht.',
+    'That item is no longer there. Refresh and try again.': 'Dieser Eintrag ist nicht mehr da. Lade neu und versuch es noch einmal.',
+
+    // ----- Offline and sync
+    "📴 You're offline. Anything you add or change is saved on this device, and will be added to your account when you're back online.":
+      '📴 Du bist offline. Alles, was du hinzufügst oder änderst, wird auf diesem Gerät gespeichert und in dein Konto übernommen, sobald du wieder online bist.',
+    '⏳ Sending': '⏳ Sende', 'you made while offline…': 'die du offline gemacht hast…',
+    "📴 You're offline. Saved on this device: it will be added to your account when you're back online.":
+      '📴 Du bist offline. Auf diesem Gerät gespeichert: Es wird in dein Konto übernommen, sobald du wieder online bist.',
+    'you made offline': 'die du offline gemacht hast', 'now saved': 'jetzt gespeichert',
+    'made offline could not be saved (the paint may have been removed on another device).': 'offline gemacht, konnte(n) nicht gespeichert werden (die Farbe wurde vielleicht auf einem anderen Gerät entfernt).',
+    'That paint is no longer there. Refresh and try again.': 'Diese Farbe ist nicht mehr da. Lade neu und versuch es noch einmal.',
+    'Give the paint a name.': 'Gib der Farbe einen Namen.', 'No barcode to save': 'Kein Barcode zum Speichern',
+    'Adding brands from the community list is coming to this version soon. The built-in brands all work.':
+      'Marken aus der Community-Liste hinzufügen kommt bald in diese Version. Alle eingebauten Marken funktionieren.',
+    "Reading a shop's paint list is coming to this version soon. The built-in brands all work.":
+      'Die Farbliste eines Shops lesen kommt bald in diese Version. Alle eingebauten Marken funktionieren.',
+    'Give the recipe a name.': 'Gib dem Rezept einen Namen.', 'That item is no longer on the list. Refresh and try again.': 'Dieser Eintrag steht nicht mehr auf der Liste. Lade neu und versuch es noch einmal.',
+    '🔄 Updated from your other device': '🔄 Von deinem anderen Gerät aktualisiert',
+
+    // ----- Google Sheet import
+    "That app code didn't work. Check it and try again.": 'Dieser App-Code hat nicht funktioniert. Prüf ihn und versuch es noch einmal.',
+    'Could not reach your Google Sheet. Check the connection link, then try again.': 'Deine Google-Tabelle ist nicht erreichbar. Prüf den Verbindungslink und versuch es noch einmal.',
+    'You need a connection to copy your sheet over.': 'Zum Übertragen deiner Tabelle brauchst du eine Verbindung.',
+    'Reading your Google Sheet…': 'Deine Google-Tabelle wird gelesen…', 'Copying': 'Kopiere',
+    '⬇️ Bring my paints over from my Google Sheet': '⬇️ Meine Farben aus meiner Google-Tabelle holen',
+    'Bring my paints over from my Google Sheet': 'Meine Farben aus meiner Google-Tabelle holen',
+    'Copy everything from the Google Sheet version': 'Alles aus der Google-Tabellen-Version kopieren',
+    'This device is already connected to your Google Sheet.': 'Dieses Gerät ist schon mit deiner Google-Tabelle verbunden.',
+    'Connection link': 'Verbindungslink', 'App code': 'App-Code',
+    'These are the two things you typed when you first set up the Paint Checker app.': 'Das sind die beiden Dinge, die du beim ersten Einrichten der Paint-Checker-App eingegeben hast.',
+    'Copy them over': 'Übertragen', '⚠️ Type your app code.': '⚠️ Gib deinen App-Code ein.', '✅ Copied': '✅ Kopiert',
+    'skipped (already here, listed twice, or blank).': 'übersprungen (schon da, doppelt oder leer).', 'Reloading…': 'Wird neu geladen…',
+    "Couldn't read": 'Konnte nicht lesen:',
+
+    // ----- Paint brands card, plans and payments
+    'You need a connection to buy.': 'Zum Kaufen brauchst du eine Verbindung.', 'Opening the payment page…': 'Zahlungsseite wird geöffnet…',
+    "Couldn't open the payment page.": 'Die Zahlungsseite konnte nicht geöffnet werden.',
+    '⚡ Add paints in seconds': '⚡ Farben in Sekunden hinzufügen', 'With': 'Mit',
+    ': scan barcodes, snap a whole shelf, and every brand fills itself in.': ': Barcodes scannen, ein ganzes Regal fotografieren, und jede Marke füllt sich selbst aus.',
+    'How it saves you time': 'So sparst du Zeit', 'Beta': 'Beta',
+    'Point your phone at a bottle in the shop and see in a second whether you already own it. No more buying doubles.':
+      'Richte dein Handy im Laden auf eine Flasche und sieh in einer Sekunde, ob du sie schon hast. Nie wieder doppelt kaufen.',
+    'Snap your paint rack': 'Fotografiere dein Farbregal',
+    'Photograph your bottles and the app reads the labels, adding a whole shelf at once instead of one by one.':
+      'Fotografiere deine Flaschen und die App liest die Etiketten – ein ganzes Regal auf einmal statt einzeln.',
+    'Every brand fills itself in': 'Jede Marke füllt sich selbst aus',
+    '🔓 See All brands plans': '🔓 „Alle Marken“-Angebote ansehen', '🔓 Try All brands free for 7 days': '🔓 „Alle Marken“ 7 Tage gratis testen',
+    'From $1.67 a month. Only need one brand?': 'Ab 1,67 $ im Monat. Du brauchst nur eine Marke?', 'Unlock one for 99¢': 'Eine für 99 ¢ freischalten',
+    '🎨 Paint brands': '🎨 Farbmarken', '✅ Every brand is included in your account': '✅ Jede Marke ist in deinem Konto enthalten',
+    '(a gift, thank you for testing!)': '(ein Geschenk, danke fürs Testen!)', 'Included in your account:': 'In deinem Konto enthalten:',
+    'Included for everyone:': 'Für alle enthalten:', 'Other brands: type their paints in by hand.': 'Andere Marken: Trag ihre Farben von Hand ein.',
+    "Only you see this card: payments are switched off, so everyone gets every brand. Purchases here use Stripe's test mode.":
+      'Nur du siehst diese Karte: Zahlungen sind ausgeschaltet, deshalb bekommt jeder jede Marke. Käufe hier nutzen den Testmodus von Stripe.',
+    "The paint lists haven't been published to the database yet.": 'Die Farblisten wurden noch nicht in der Datenbank veröffentlicht.',
+    '✅ You have every brand': '✅ Du hast jede Marke', ', for life': ', lebenslang', 'Free trial until': 'Gratis-Test bis',
+    ". Cancelled, so you won't be charged.": '. Gekündigt, es wird also nichts abgebucht.', ', then your plan starts.': ', dann beginnt dein Abo.',
+    'Cancelled: you keep every brand until': 'Gekündigt: Du behältst jede Marke bis', ', with no more charges.': ', ohne weitere Abbuchungen.',
+    'Renews on': 'Verlängert sich am', 'Manage my subscription': 'Mein Abo verwalten',
+    ': every brand fills itself in as you type, with real colours,': ': Jede Marke füllt sich beim Tippen selbst aus, mit echten Farbtönen,',
+    'plus barcode scanning (beta) and reading labels from photos.': 'dazu Barcode-Scannen (Beta) und Etiketten aus Fotos lesen.',
+    'Monthly': 'Monatlich', '$2.99 a month': '2,99 $ im Monat', 'Cancel any time': 'Jederzeit kündbar', 'Yearly': 'Jährlich', '$19.99 a year': '19,99 $ im Jahr',
+    '$1.67 a month · save 44%': '1,67 $ im Monat · 44 % sparen', 'Lifetime': 'Lebenslang', '$39.99 once': '39,99 $ einmalig', 'Pay once, keep it': 'Einmal zahlen, für immer behalten',
+    'Start 7-day free trial': '7 Tage gratis testen', 'Get All brands': '„Alle Marken“ holen',
+    'Or unlock one brand, yours for good: 99¢': 'Oder schalte eine Marke dauerhaft frei: 99 ¢',
+    "That brand's paints fill themselves in, with their real colours.": 'Die Farben dieser Marke füllen sich selbst aus, mit ihren echten Farbtönen.',
+    'Unlock 99¢': 'Freischalten 99 ¢', 'You have unlocked every brand.': 'Du hast jede Marke freigeschaltet.', 'By buying you agree to the': 'Mit dem Kauf stimmst du den',
+    'Yours:': 'Deine:', 'Free for everyone:': 'Gratis für alle:', 'Restore purchases': 'Käufe wiederherstellen', 'Owner': 'Inhaber',
+    '⬆️ Publish the paint lists to the database': '⬆️ Farblisten in der Datenbank veröffentlichen', '🎁 Free access': '🎁 Gratis-Zugang',
+    'Anyone signing in with one of these emails gets every brand, free. Works before or after they sign up.':
+      'Wer sich mit einer dieser E-Mails anmeldet, bekommt jede Marke gratis. Funktioniert vor oder nach der Registrierung.',
+    'friend@example.com': 'freund@beispiel.de', 'Give free access': 'Gratis-Zugang geben', '📱 Invite an Android tester': '📱 Android-Tester einladen',
+    'Opens a ready-written invite in Gmail; you just press Send.': 'Öffnet eine fertige Einladung in Gmail; du musst nur auf Senden tippen.',
+    'They join the tester group, then the Google Play test.': 'Sie treten der Testergruppe bei und dann dem Google-Play-Test.',
+    'their-gmail@gmail.com': 'ihre-gmail@gmail.com', 'Write invite': 'Einladung schreiben', 'Also give them free access to every brand': 'Auch Gratis-Zugang zu jeder Marke geben',
+    'Buy for $39.99': 'Für 39,99 $ kaufen', 'One payment. Every brand, scanning and photos, for good.': 'Eine Zahlung. Jede Marke, Scannen und Fotos, für immer.',
+    'Free for 7 days, then': '7 Tage gratis, dann', ". Cancel before then and you won't be charged.": '. Kündige vorher, dann wird nichts abgebucht.',
+    'Renews': 'Verlängert sich', ', cancel any time.': ', jederzeit kündbar.', 'Choose a brand first.': 'Wähle zuerst eine Marke.',
+    'Type a whole email address.': 'Gib eine vollständige E-Mail-Adresse ein.', 'already has free access.': 'hat schon Gratis-Zugang.',
+    'now gets every brand free.': 'bekommt jetzt jede Marke gratis.', 'Tap again to remove': 'Nochmal tippen zum Entfernen',
+    'no longer has free access.': 'hat keinen Gratis-Zugang mehr.', "(Free access didn't save:": '(Gratis-Zugang wurde nicht gespeichert:',
+    'They now get every brand free.': 'Sie bekommen jetzt jede Marke gratis.', '✉️ Invite opened in Gmail for': '✉️ Einladung in Gmail geöffnet für',
+    ', press Send there.': ', tippe dort auf Senden.', '✅ Up to date.': '✅ Auf dem neuesten Stand.', 'Gathering the paint lists…': 'Farblisten werden gesammelt…',
+    'Saving brands': 'Marken werden gespeichert', '✅ Published': '✅ Veröffentlicht:', 'brands,': 'Marken,',
+    'Payment cancelled. Nothing was charged.': 'Zahlung abgebrochen. Es wurde nichts abgebucht.', 'Thank you! Unlocking your paints…': 'Danke! Deine Farben werden freigeschaltet…',
+    '✅ Unlocked. Enjoy your paints!': '✅ Freigeschaltet. Viel Spaß mit deinen Farben!',
+    'Your payment went through. If something is still locked, tap Restore purchases in a minute.':
+      'Deine Zahlung ist durchgegangen. Wenn noch etwas gesperrt ist, tippe in einer Minute auf „Käufe wiederherstellen“.',
+    'Something went wrong': 'Etwas ist schiefgelaufen', 'App version': 'App-Version', '(account version)': '(Konto-Version)', '(version': '(Version'
+  },
+  quotes: true,
+  // Short, general phrases: only translated when they are the whole bit of text, never inside longer text (your notes).
+  whole: ['This is a', 'This is', 'Looks like a', 'You own', 'you own', 'Here are the', 'Here’s the', 'Show', 'to buy', 'have it',
+    'None of your', 'You have', '✅ You have', '✅ You own', 'Found', 'Adding', 'Copying', 'Renews', 'Renews on', 'Downloading the', 'paints and',
+    'this part', 'Want', 'With', 'running low', 'Running low', 'same colour', 'Same colour', 'Very close', 'Closest you have', 'Equal parts',
+    'Great match', 'adds colour', 'Other colours', 'New part', 'New recipe', 'Edit recipe', 'Base coat', 'Free trial until', 'Label says',
+    'This removes your account', 'We sent an email to'],
+  // Lowercase words, swapped only inside text with no capital letters (see i18n-engine.js).
+  words: {
+    'paints': 'Farben', 'paint': 'Farbe', 'bottles': 'Flaschen', 'bottle': 'Flasche', 'markers': 'Marker', 'marker': 'Marker',
+    'sprays': 'Sprays', 'spray': 'Spray', 'coloured pencils': 'Buntstifte', 'coloured pencil': 'Buntstift', 'pots': 'Döschen',
+    'and': 'und', 'from': 'von', 'you own': 'die du hast', 'used-up': 'aufgebrauchte', 'matches': 'Treffer', 'match': 'Treffer',
+    'red': 'Rotton', 'orange': 'Orangeton', 'yellow': 'Gelbton', 'green': 'Grünton', 'blue': 'Blauton', 'purple': 'Violettton', 'pink': 'Rosaton',
+    'brown': 'Braunton', 'skin tone': 'Hautton', 'grey': 'Grauton', 'black': 'Schwarzton', 'white': 'Weißton', 'metallic': 'Metallic',
+    'reds': 'Rottöne', 'oranges': 'Orangetöne', 'yellows': 'Gelbtöne', 'greens': 'Grüntöne', 'blues': 'Blautöne', 'purples': 'Violetttöne',
+    'pinks': 'Rosatöne', 'browns': 'Brauntöne', 'skin tones': 'Hauttöne', 'greys': 'Grautöne', 'blacks': 'Schwarztöne', 'whites': 'Weißtöne',
+    'metallics': 'Metallics', 'parts': 'Teile', 'part': 'Teil', 'steps': 'Schritte', 'step': 'Schritt', 'brands': 'Marken', 'brand': 'Marke',
+    'changes': 'Änderungen', 'change': 'Änderung', 'items': 'Einträge', 'item': 'Eintrag', 'to buy': 'zu kaufen'
+  },
+  // Text whose word order changes in German.
+  patterns: [
+    [/^(.+) \((\d+) paints?\)$/, '$1 ($2 Farben)'],
+    [/^Paint (\d+): e\.g\. (.*)$/, 'Farbe $1: z. B. $2'],
+    [/^Found (\d+) steps?\. /, 'Gefunden: $1 Schritte. '],
+    [/^None of your (paints|markers|sprays|coloured pencils|pigment powders) is darker in a colour that would work as a shade\.$/, 'Keine deiner Farben ist dunkler und hat einen Farbton, der als Schatten taugt.'],
+    [/^None of your (paints|markers|sprays|coloured pencils|pigment powders) is lighter in a colour that would work as a highlight\.$/, 'Keine deiner Farben ist heller und hat einen Farbton, der als Highlight taugt.'],
+    [/^✅ Copied (\d+) paints?, (\d+) recipes? and (\d+) shopping list items?\./, '✅ Kopiert: $1 Farbe(n), $2 Rezept(e) und $3 Einkaufslisten-Eintrag/Einträge.'],
+    [/ (\d+) rows? (?:was|were) skipped \(already here, listed twice, or blank\)\./, ' $1 Zeile(n) übersprungen (schon da, doppelt oder leer).'],
+    [/^Show (\d+) used-up paints?$/, '$1 aufgebrauchte anzeigen'],
+    [/^Here’s the (\d+) paint you own matching “(.*)”$/, 'Hier ist die $1 Farbe, die du hast, passend zu „$2“'],
+    [/^You have (\d+) changes? made offline that (?:hasn't|haven't) been sent yet\. Signing out now will lose (?:it|them)\. Sign out anyway\?$/,
+      'Du hast $1 offline gemachte Änderung(en), die noch nicht gesendet wurde(n). Wenn du dich jetzt abmeldest, gehen sie verloren. Trotzdem abmelden?'],
+    [/^Adding (\d+) paints?…$/, '$1 Farbe(n) wird/werden hinzugefügt…'],
+    [/^✅ Published (\d+) brands, (\d+) paints\.$/, '✅ Veröffentlicht: $1 Marken, $2 Farben.'],
+    [/^(\d+) paints? and (\d+) markers?$/, '$1 Farben und $2 Marker']
+  ],
+  // Colour names on the colour wheel, its White/Grey/Black buttons and the heading of what was picked
+  // (only there, as a paint may be called just "Black").
+  scoped: [['#wheel, #wneutral, #wout > .base:first-child', (function () {
+    var HUE = { 'yellow': 'Gelb', 'yellow-orange': 'Gelb-Orange', 'orange': 'Orange', 'red-orange': 'Rot-Orange', 'red': 'Rot', 'red-purple': 'Rot-Violett',
+      'purple': 'Violett', 'blue-purple': 'Blau-Violett', 'blue': 'Blau', 'blue-green': 'Blau-Grün', 'green': 'Grün', 'yellow-green': 'Gelb-Grün' };
+    var TONE = { 'pale': 'Blasses', 'light': 'Helles', 'dark': 'Dunkles', 'deep': 'Tiefes' };
+    var OTHER = { 'white': 'Weiß', 'light grey': 'Hellgrau', 'grey': 'Grau', 'dark grey': 'Dunkelgrau', 'black': 'Schwarz', 'metallic': 'Metallic',
+      'metallics': 'Metallics', 'tap a colour': 'Farbe tippen' };
+    return function (t) {
+      var k = t.toLowerCase();
+      if (OTHER[k]) return t === t.toUpperCase() ? OTHER[k].toUpperCase() : OTHER[k];
+      var m = k.match(/^(?:(pale|light|dark|deep) )?([a-z]+(?:-[a-z]+)?)$/);
+      if (!m || !HUE[m[2]]) return null;
+      var out = (m[1] ? TONE[m[1]] + ' ' : '') + HUE[m[2]];
+      return t === t.toUpperCase() ? out.toUpperCase() : out;
+    };
+  })()]],
+  // Colour names only on the colour wheel drawing (a paint may be called just "Black").
+  svg: {
+    'tap a colour': 'Farbe tippen', 'Yellow': 'Gelb', 'Orange': 'Orange', 'Red': 'Rot', 'Purple': 'Violett', 'Blue': 'Blau', 'Green': 'Grün',
+    'Pale': 'Blass', 'Light': 'Hell', 'Dark': 'Dunkel', 'Deep': 'Tief', 'White': 'Weiß', 'Light grey': 'Hellgrau', 'Grey': 'Grau',
+    'Dark grey': 'Dunkelgrau', 'Black': 'Schwarz', 'Metallics': 'Metallics'
+  }
+};
+
+// Languages for Bad Influence Hobby (2026-10-29). The app is written in English; this swaps the English text on screen
+// for the chosen language as the page draws it, so the app's own code, saved data and paint names stay unchanged.
+// Language: the one picked in the app (saved on the device), else German when the phone/browser is set to German.
+// Words list: window.BIH_LANGS[code] = { exact: {...}, patterns: [[RegExp, replacement], ...], svg: {...} }.
+//  - exact: a whole bit of text -> translation. Keys with a space or punctuation are also swapped when they appear
+//    inside a longer bit of text (e.g. "Looking for “Mephiston”…"); single words only when they are the whole text,
+//    so paint names like "Black" or "Golden Armour" are never touched.
+//  - patterns: for text whose word order changes in the other language.
+//  - svg: words only translated inside drawings (the colour wheel's labels).
+(function () {
+  var KEY = 'bih-lang', NAMES = { en: 'English', de: 'Deutsch' };
+  function pick() {
+    try { var v = localStorage.getItem(KEY); if (v && NAMES[v]) return v; } catch (e) {}
+    var l = String((navigator.languages && navigator.languages[0]) || navigator.language || 'en').toLowerCase();
+    return l.indexOf('de') === 0 ? 'de' : 'en';
+  }
+  var lang = pick();
+  window.bihLang = {
+    get: function () { return lang; },
+    set: function (v) { try { localStorage.setItem(KEY, v); } catch (e) {} location.reload(); },
+    // A small language menu, for the sign-in screen and the account area.
+    picker: function (style) {
+      return '<label data-no-i18n style="display:inline-flex;align-items:center;gap:6px;' + (style || '') + '">🌐 <select onchange="bihLang.set(this.value)" ' +
+        'style="background:transparent;color:inherit;border:1px solid #2b3039;border-radius:8px;padding:3px 6px;font:inherit">' +
+        Object.keys(NAMES).map(function (k) { return '<option value="' + k + '"' + (k === lang ? ' selected' : '') + '>' + NAMES[k] + '</option>'; }).join('') +
+        '</select></label>';
+    },
+    t: function (s) { return s; }
+  };
+  try { document.documentElement.lang = lang; } catch (e) {}
+  var W = (window.BIH_LANGS || {})[lang];
+  if (lang === 'en' || !W) return;
+  // Already in the reader's language: stop the browser's own translate offering to turn it back into English.
+  try { document.documentElement.setAttribute('translate', 'no'); document.documentElement.classList.add('notranslate'); } catch (e) {}
+
+  var exact = W.exact || {}, svg = W.svg || {}, patterns = W.patterns || [], words = W.words || {};
+  var scoped = W.scoped || []; // [[CSS selector, function (text) -> translation or null]]: words only translated in one area
+  // Lowercase bits like " paints and " or "reds you own · 3 bottles": swapped word by word, but only in text with no
+  // capital letters at all, so paint names (always capitalised) are never touched.
+  var wordKeys = Object.keys(words).sort(function (a, b) { return b.length - a.length; });
+  var wordRe = wordKeys.length ? new RegExp('(?<![A-Za-z-])(' + wordKeys.map(function (k) { return k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }).join('|') + ')(?![A-Za-z-])', 'g') : null;
+  var ex = Object.create(null), esc = function (s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); };
+  Object.keys(exact).forEach(function (k) { ex[norm(k)] = exact[k]; });
+  function norm(s) { return String(s).replace(/\s+/g, ' ').trim(); }
+  // Pieces that may sit inside longer text: anything with a space or punctuation, longest first.
+  var whole = Object.create(null); (W.whole || []).forEach(function (k) { whole[norm(k)] = 1; });
+  var pieces = Object.keys(ex).filter(function (k) { return /[^A-Za-z]/.test(k) && k.length >= 3 && !whole[k]; })
+    .sort(function (a, b) { return b.length - a.length; });
+  var pieceRe = pieces.length ? new RegExp(pieces.map(function (k) {
+    return (/^[A-Za-z]/.test(k) ? '(?<![A-Za-z])' : '') + esc(k) + (/[A-Za-z]$/.test(k) ? '(?![A-Za-z])' : '');
+  }).join('|'), 'g') : null;
+
+  function tr(s, inSvg) {
+    if (!s || !/[A-Za-z]/.test(s)) return s;
+    var m = s.match(/^(\s*)([\s\S]*?)(\s*)$/), core = norm(m[2]);
+    if (!core) return s;
+    var out = inSvg && svg[core] != null ? svg[core] : ex[core];
+    if (out == null) {
+      // A pattern first (word order), then the known pieces in whatever is left.
+      out = core;
+      for (var i = 0; i < patterns.length; i++) out = out.replace(patterns[i][0], patterns[i][1]);
+      if (pieceRe) out = out.replace(pieceRe, function (p) { return ex[p]; });
+      if (wordRe && !/[A-Z]/.test(core)) out = out.replace(wordRe, function (w) { return words[w]; });
+      if (out === core) return s;
+    }
+    if (W.quotes) out = out.replace(/„([^”“„]*)”/g, '„$1“'); // German quotes close with “
+    return m[1] + out + m[3];
+  }
+  window.bihLang.t = function (s) { return tr(s, false); };
+
+  var SKIP = { SCRIPT: 1, STYLE: 1, TEXTAREA: 1, NOSCRIPT: 1, CODE: 1, PRE: 1 };
+  var ATTRS = ['placeholder', 'title', 'aria-label', 'alt'];
+  var done = new WeakMap(); // text node -> the translated text we put there (so we don't translate twice)
+  function skipEl(e) {
+    for (; e && e.nodeType === 1; e = e.parentNode) {
+      if (SKIP[e.nodeName] || e.isContentEditable || e.hasAttribute('data-no-i18n')) return true;
+    }
+    return false;
+  }
+  function inSvg(e) { for (; e && e.nodeType === 1; e = e.parentNode) if (e.namespaceURI === 'http://www.w3.org/2000/svg') return true; return false; }
+  function doText(n) {
+    var v = n.nodeValue;
+    if (!v || done.get(n) === v) return;
+    var p = n.parentNode;
+    if (!p || skipEl(p)) return;
+    var t = null, core = norm(v);
+    for (var i = 0; i < scoped.length; i++) {
+      if (p.closest && p.closest(scoped[i][0])) { var r = scoped[i][1](core); if (r != null) { t = v.replace(/\S[\s\S]*\S|\S/, r); break; } }
+    }
+    if (t == null) t = tr(v, inSvg(p));
+    if (t !== v) {
+      // A drop-down option with no value of its own saves its text: keep that English.
+      if (p.nodeName === 'OPTION' && !p.hasAttribute('value')) p.setAttribute('value', p.textContent);
+      n.nodeValue = t;
+    }
+    done.set(n, n.nodeValue);
+  }
+  function doAttrs(e) {
+    if (skipEl(e)) return;
+    for (var i = 0; i < ATTRS.length; i++) {
+      var a = ATTRS[i], v = e.getAttribute(a);
+      if (v && e.getAttribute('data-i18n-' + a) !== v) {
+        var t = tr(v, false);
+        if (t !== v) e.setAttribute(a, t);
+        e.setAttribute('data-i18n-' + a, t);
+      }
+    }
+    if (e.nodeName === 'INPUT' && /^(button|submit|reset)$/i.test(e.type) && e.value) {
+      var t2 = tr(e.value, false); if (t2 !== e.value) e.value = t2;
+    }
+  }
+  function walk(root) {
+    if (!root) return;
+    if (root.nodeType === 3) { doText(root); return; }
+    if (root.nodeType !== 1 && root.nodeType !== 9 && root.nodeType !== 11) return;
+    if (root.nodeType === 1) { if (skipEl(root)) return; doAttrs(root); }
+    var w = document.createTreeWalker(root, 5 /* elements + text */, null), n;
+    while ((n = w.nextNode())) { if (n.nodeType === 3) doText(n); else doAttrs(n); }
+  }
+  // Dialog boxes (confirm, alert, prompt) say their message in the chosen language too.
+  ['alert', 'confirm', 'prompt'].forEach(function (f) {
+    var orig = window[f];
+    if (typeof orig !== 'function') return;
+    window[f] = function (msg) { var a = [].slice.call(arguments); if (typeof msg === 'string') a[0] = tr(msg, false); return orig.apply(window, a); };
+  });
+  function start() {
+    try { document.documentElement.lang = lang; } catch (e) {}
+    walk(document.body);
+    new MutationObserver(function (list) {
+      for (var i = 0; i < list.length; i++) {
+        var r = list[i];
+        if (r.type === 'characterData') doText(r.target);
+        else if (r.type === 'attributes') { if (r.target.nodeType === 1) doAttrs(r.target); }
+        else for (var j = 0; j < r.addedNodes.length; j++) walk(r.addedNodes[j]);
+      }
+    }).observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ATTRS.concat(['value']) });
+  }
+  if (document.body) start(); else document.addEventListener('DOMContentLoaded', start);
+})();
+
+  </script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
   <script>
 // Bad Influence Hobby (the account version of Paint Checker): stands in for Google's google.script.run.
@@ -18,7 +633,7 @@
 // the signed-in person's rows in the Supabase database instead of a Google Sheet.
 // The database's own rules (Row Level Security) are what keep each person's data private; this file only asks.
 (function () {
-  var SB_URL = 'https://ewgbdtkeaoguwayymtay.supabase.co', SB_KEY = 'sb_publishable_md1uOYqL25oZVSb-AknbOg_gfpV7TMH', VERSION = 'd001514784';
+  var SB_URL = 'https://ewgbdtkeaoguwayymtay.supabase.co', SB_KEY = 'sb_publishable_md1uOYqL25oZVSb-AknbOg_gfpV7TMH', VERSION = 'e55c880938';
   var sb = window.supabase.createClient(SB_URL, SB_KEY, {
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, storageKey: 'pc-auth' }
   });
@@ -45,7 +660,8 @@
     return '<div style="max-width:420px;width:100%;font-family:system-ui,sans-serif;color:#e9ebef">' +
       '<div style="font-size:24px;font-weight:800">🎨 Bad Influence Hobby</div>' + inner +
       '<div id="sierr" style="color:#ff8a8a;margin-top:12px;min-height:20px"></div>' +
-      (ACCOUNT_EXTRAS ? '<div style="margin-top:18px;font-size:13px"><a href="privacy.html" style="color:#8e95a2">What we keep and how to delete it</a> · <a href="terms.html" style="color:#8e95a2">Terms</a></div>' : '') + '</div>';
+      (ACCOUNT_EXTRAS ? '<div style="margin-top:18px;font-size:13px"><a href="privacy.html" style="color:#8e95a2">What we keep and how to delete it</a> · <a href="terms.html" style="color:#8e95a2">Terms</a></div>' : '') +
+      (window.bihLang ? '<div style="margin-top:12px;font-size:13px;color:#8e95a2">' + window.bihLang.picker() + '</div>' : '') + '</div>';
   }
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
 
@@ -211,6 +827,7 @@
       if (!el) return;
       el.innerHTML = 'Signed in as ' + esc(session.user.email || '') + ' · <a href="#" id="signout" style="color:inherit">Sign out</a>' +
         (ACCOUNT_EXTRAS ? '<div style="margin-top:6px"><a href="privacy.html" style="color:inherit">Privacy</a> · <a href="terms.html" style="color:inherit">Terms</a> · <a href="credits.html" style="color:inherit">Credits</a> · <a href="#" id="delacct" style="color:inherit">Delete my account</a></div>' +
+          (window.bihLang ? '<div style="margin-top:8px">' + window.bihLang.picker() + '</div>' : '') +
           (window.pcStoreApp ? '' : '<div style="margin-top:10px"><a href="test.html" style="display:inline-block;padding:5px 12px;border:1px solid #2b3039;border-radius:999px;color:inherit;text-decoration:none;font-size:13px">📱 Test the Android app</a></div>') : '');
       if (ACCOUNT_EXTRAS) document.getElementById('delacct').onclick = function (e) { e.preventDefault(); deleteAccount(); };
       document.getElementById('signout').onclick = function (e) {
@@ -1785,14 +2402,33 @@
       if (!cols) { cols = c; return; }
       if (/^-+$/.test(c[0])) return;
       var code = cols.indexOf('Code') >= 0 ? c[cols.indexOf('Code')] : '';
-      into.push({
+      var p = {
         brand: brand,
         code: code === 'null' ? '' : code,
         range: (c[cols.indexOf('Set')] || '').replace(/ Set\b/, ''),
         name: c[0],
         hex: (line.match(/\x60(#[0-9A-Fa-f]{6})\x60/) || [])[1] || ''
-      });
+      };
+      if (brand === 'The Army Painter') fixArmyPainter(p);
+      into.push(p);
     });
+  }
+
+  // The community list files every Warpaints Fanatic Effects paint (Disgusting Slime, Dry Blood, the Glows...) under
+  // "Warpaints Fanatic Wash" and has no codes for the Fanatic washes and effects. Corrected from the official shop
+  // (thearmypainter.com, 2026-10-29: effects WP3163-WP3180, washes WP3199-WP3216).
+  var AP_FANATIC_EFFECTS = { 'Disgusting Slime': 'WP3163', 'Dry Blood': 'WP3164', 'True Blood': 'WP3165', 'Dark Rust': 'WP3166',
+    'Fresh Rust': 'WP3167', 'Verdigris': 'WP3168', 'Oil Stains': 'WP3169', 'Oozing Vomit': 'WP3170', 'Warpaints Stabilizer': 'WP3171',
+    'Warpaints Retarder': 'WP3172', 'Gloss Varnish': 'WP3173', 'Matt Varnish': 'WP3174', 'Brush-On Primer': 'WP3175',
+    'Plasma Coil Glow': 'WP3176', 'Data System Glow': 'WP3177', 'Lens Flare Glow': 'WP3178', 'Radiation Glow': 'WP3179', 'Power Node Glow': 'WP3180' };
+  var AP_FANATIC_WASHES = { 'Dark Tone': 'WP3199', 'Strong Tone': 'WP3200', 'Soft Tone': 'WP3201', 'Light Tone': 'WP3202', 'Sepia Tone': 'WP3203',
+    'Rust Tone': 'WP3204', 'Dark Red Tone': 'WP3205', 'Red Tone': 'WP3206', 'Orange Tone': 'WP3207', 'Green Tone': 'WP3208',
+    'Military Shade': 'WP3209', 'Blue Tone': 'WP3210', 'Dark Blue Tone': 'WP3211', 'Purple Tone': 'WP3212', 'Magenta Tone': 'WP3213',
+    'Strong Skin Shade': 'WP3214', 'Dark Skin Shade': 'WP3215', 'Wash Medium': 'WP3216' };
+  function fixArmyPainter(p) {
+    if (p.range !== 'Warpaints Fanatic Wash') return;
+    if (AP_FANATIC_EFFECTS[p.name]) { p.range = 'Warpaints Fanatic Effects'; p.code = p.code || AP_FANATIC_EFFECTS[p.name]; }
+    else if (AP_FANATIC_WASHES[p.name]) p.code = p.code || AP_FANATIC_WASHES[p.name];
   }
 
   function findInCatalog(q) {
@@ -2695,7 +3331,7 @@
         '<div class="muted" style="margin-bottom:8px">' + (usedUp ? 'Quantity is 0, so it\'s worth buying.' : 'Don\'t buy it.') + '</div>' +
         '<div style="font-size:18px">' + esc(p.name) + '</div>' +
         '<div class="muted">' + esc([p.brand, p.range, p.type || inferType(p)].filter(Boolean).join(' · ')) + '</div>' +
-        (p.notes ? '<div class="muted">' + esc(p.notes) + '</div>' : '') +
+        (p.notes ? '<div class="muted" data-no-i18n>' + esc(p.notes) + '</div>' : '') +
         '<div class="qty"><button class="ghost" onclick="qty(' + p.row + ',-1)">−</button>' +
         'Qty: <b id="qtyv">' + esc(p.qty) + '</b>' +
         '<button class="ghost" onclick="qty(' + p.row + ',1)">+</button></div>' +
@@ -2877,7 +3513,13 @@
     metal: /\b(metal|metallic|gold|silver|bronze|copper|brass|steel|iron|chrome|pewter|gunmetal|aluminium|aluminum|tin|leadbelcher|retributor|runefang|ironbreaker|balthasar|auric|liberator|stormhost|sycorax|canoptek|warplock|hashut|gehenna|castellax|runelord|fulgurite|thallax|skullcrusher|necron compound|gilded|chainmail|plate mail)\b/
   };
   var FAMILY_ALIAS = { gray: 'grey', grays: 'grey', metallic: 'metal', metallics: 'metal', metals: 'metal', skin: 'flesh', flesh: 'flesh' };
-  var STOP = /^(and|or|all|my|the|of|with|in|paints?|colou?rs?|tones?|shades?)$/;
+  // German colour words, only when the app is in German (in English "rot" must still find Nurgle's Rot).
+  if (window.bihLang && window.bihLang.get() === 'de') ['rot red', 'rote red', 'rottöne red', 'orange orange', 'orangetöne orange', 'gelb yellow', 'gelbe yellow',
+    'gelbtöne yellow', 'grün green', 'grüne green', 'gruen green', 'grüntöne green', 'blau blue', 'blaue blue', 'blautöne blue', 'lila purple',
+    'violett purple', 'violetttöne purple', 'rosa pink', 'rosatöne pink', 'braun brown', 'braune brown', 'brauntöne brown', 'haut flesh',
+    'hautton flesh', 'hauttöne flesh', 'grau grey', 'graue grey', 'grautöne grey', 'schwarz black', 'schwarze black', 'schwarztöne black',
+    'weiß white', 'weiss white', 'weiße white', 'weißtöne white', 'metall metal', 'metallisch metal'].forEach(function (x) { x = x.split(' '); FAMILY_ALIAS[x[0]] = x[1]; });
+  var STOP = /^(and|or|all|my|the|of|with|in|paints?|colou?rs?|tones?|shades?|und|oder|alle|meine|die|der|das|farben?|farbtöne?|töne)$/;
 
   // ---------- Paint types ----------
   var TYPES = ['Regular', 'Contrast', 'Speedpaint', 'Xpress', 'Wash / Shade', 'Ink / Glaze', 'Metallic', 'Effect', 'Pigment powder', 'Air', 'Primer', 'Craft',
@@ -2987,6 +3629,11 @@
   }
 
   function enrich(p) {
+    // Army Painter effect paints saved before 2026-10-29 still say "Warpaints Fanatic Wash": show them as effects.
+    if (p.brand === 'The Army Painter' && p.range === 'Warpaints Fanatic Wash' && AP_FANATIC_EFFECTS[p.name]) {
+      p.range = 'Warpaints Fanatic Effects';
+      if (p.type === 'Wash / Shade') p.type = '';
+    }
     var bare = stripCode(p.name), hex = '';
     var keys = [normName(p.name), normName(bare), '~' + looseName(p.name), '~' + looseName(bare)];
     for (var i = 0; i < keys.length && !hex; i++) {
@@ -4233,7 +4880,7 @@
     return '<div class="step"><span class="tech">' + esc(s.technique || 'Step') + '</span>' +
       (s.paint ? '<span class="sw" style="background:' + (res && res.hex || 'transparent') + '"></span>' : '') +
       '<span class="grow">' + (s.paint ? '<b>' + esc(s.paint) + '</b>' + (s.brand ? ' <span class="muted">' + esc(canonicalBrand(s.brand)) + '</span>' : '') : '') +
-      (s.notes ? '<div class="muted">' + esc(s.notes) + '</div>' : '') + '</span></div>';
+      (s.notes ? '<div class="muted" data-no-i18n>' + esc(s.notes) + '</div>' : '') + '</span></div>';
   }
 
   // A recipe is shown as one box per part (Cape, Gun, Base…), each with its steps in order.
@@ -4242,7 +4889,7 @@
     var html = '<div class="row" style="margin-top:0"><button class="ghost" onclick="recList()">← All recipes</button>' +
       '<button class="ghost" onclick="recEdit(' + i + ')">✏️ Edit</button></div>' +
       '<div class="ptitle" style="margin-top:14px">' + esc(r.name) + '</div>' +
-      (r.notes ? '<div class="recnotes">' + linkify(esc(r.notes)) + '</div>' : '');
+      (r.notes ? '<div class="recnotes" data-no-i18n>' + linkify(esc(r.notes)) + '</div>' : '');
     recSections(r).forEach(function (sec, k) {
       html += '<div class="rgroup"><div class="sect">' + esc(sec || 'Steps') + '</div>' +
         r.steps.filter(function (s) { return (s.section || '') === sec; }).map(recStepHtml).join('') +
