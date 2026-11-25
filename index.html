@@ -633,7 +633,7 @@ window.BIH_LANGS.de = {
 // the signed-in person's rows in the Supabase database instead of a Google Sheet.
 // The database's own rules (Row Level Security) are what keep each person's data private; this file only asks.
 (function () {
-  var SB_URL = 'https://ewgbdtkeaoguwayymtay.supabase.co', SB_KEY = 'sb_publishable_md1uOYqL25oZVSb-AknbOg_gfpV7TMH', VERSION = 'e55c880938';
+  var SB_URL = 'https://ewgbdtkeaoguwayymtay.supabase.co', SB_KEY = 'sb_publishable_md1uOYqL25oZVSb-AknbOg_gfpV7TMH', VERSION = '71f2237cbe';
   var sb = window.supabase.createClient(SB_URL, SB_KEY, {
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, storageKey: 'pc-auth' }
   });
@@ -1182,6 +1182,39 @@ window.BIH_LANGS.de = {
       return recipes();
     },
 
+    // Painting guides (owner-only test, supabase/012_guides.sql). Online only; the page photos load one at a time.
+    getGuides: async function () {
+      var r = check(await sb.from('guides').select('id, name, source, army, tags, steps, position, created_at').order('position').order('created_at'));
+      return (r || []).map(function (g) { return { id: g.id, name: g.name, source: g.source, army: g.army, tags: g.tags, steps: g.steps || [] }; });
+    },
+    getGuidePage: async function (id) {
+      var r = check(await sb.from('guides').select('id, page_photo').eq('id', id));
+      return r && r[0] ? r[0].page_photo || '' : '';
+    },
+    // Adds guides; a guide with the same name and source as one you have replaces it.
+    saveGuides: async function (list) {
+      var have = check(await sb.from('guides').select('id, name, source')) || [];
+      var key = function (g) { return (String(g.name || '').trim() + '|' + String(g.source || '').trim()).toLowerCase(); };
+      var n = have.length;
+      for (var i = 0; i < list.length; i++) {
+        var g = list[i], row = { name: String(g.name || '').trim(), source: String(g.source || '').trim(), army: String(g.army || '').trim(),
+          tags: Array.isArray(g.tags) ? g.tags.join(', ') : String(g.tags || ''), steps: g.steps || [], page_photo: g.page_photo || '' };
+        if (!row.name) continue;
+        var old = have.filter(function (h) { return key(h) === key(row); })[0];
+        if (old) check(await sb.from('guides').update(Object.assign(row, { updated_at: new Date().toISOString() })).eq('id', old.id));
+        else check(await sb.from('guides').insert(Object.assign(row, { position: n++ })));
+      }
+      return API.getGuides();
+    },
+    updateGuide: async function (id, patch) {
+      check(await sb.from('guides').update(Object.assign({}, patch, { updated_at: new Date().toISOString() })).eq('id', id));
+      return API.getGuides();
+    },
+    deleteGuide: async function (id) {
+      check(await sb.from('guides').delete().eq('id', id));
+      return API.getGuides();
+    },
+
     getWishlist: function () { return wishes(true); },
 
     // Adds a paint to the list, or just updates the reason if it's already on it.
@@ -1481,6 +1514,7 @@ window.BIH_LANGS.de = {
     SHOP.gifts = null;
     if (SHOP.admin) { var g = await sb.from('gift_emails').select('email, note').order('created_at'); SHOP.gifts = g.data || []; }
     SHOP.loaded = true;
+    if (window.guidesOwner) window.guidesOwner(SHOP.admin); // the Guides tab is owner-only for now
   }
 
   // Opens Stripe's payment page (or the manage-subscription page). Problems are written into msg, or shown as a toast.
@@ -2083,6 +2117,25 @@ window.BIH_LANGS.de = {
     .erow select { flex: 1; margin-top: 6px; }
     .erow.small button { margin-top: 6px; padding: 6px 12px; font-size: 14px; }
 
+    /* Painting guides (owner-only test) */
+    .gstep { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 10px; padding: 10px 12px; margin-top: 6px; border-radius: 12px; background: var(--surface2); }
+    .gstep .grow { flex: 1; min-width: 180px; }
+    .gnum { flex: none; width: 26px; height: 26px; border-radius: 50%; background: var(--accent); color: #fff; font-weight: 800; font-size: 14px; display: flex; align-items: center; justify-content: center; }
+    .gpic { flex: none; width: 84px; height: 84px; object-fit: cover; border-radius: 10px; cursor: zoom-in; }
+    .gpic.big { width: 100%; max-width: 460px; height: auto; object-fit: contain; cursor: zoom-out; order: 9; }
+    .gline { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .gline .sw { width: 22px; height: 22px; }
+    .gok { margin-top: 4px; color: #4ade80; font-weight: 700; font-size: 14px; }
+    .gmiss { margin-top: 4px; color: #fca5a5; font-weight: 700; font-size: 14px; }
+    .ginst { margin-top: 4px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 14px; }
+    .ginst .sw { width: 18px; height: 18px; }
+    .gtags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .gtag { padding: 3px 10px; border-radius: 999px; background: var(--surface2); color: var(--muted); font-size: 12px; font-weight: 700; cursor: pointer; border: 0; }
+    .gpage { display: block; width: 100%; border-radius: 12px; margin-top: 10px; }
+    .gfile { display: inline-flex; align-items: center; cursor: pointer; }
+    .gfile input { display: none; }
+    .gsmall { padding: 4px 10px; font-size: 12px; margin-top: 6px; }
+
     /* Narrow desktop windows and tablets: tighter tabs so all five fit beside the name */
     @media (min-width: 701px) and (max-width: 900px) {
       .top { padding: 10px 12px; gap: 8px; }
@@ -2115,8 +2168,13 @@ window.BIH_LANGS.de = {
       <button class="tab" id="tab-eq" onclick="go('eq')"><span class="ti">🔁</span><span>Match</span></button>
       <button class="tab" id="tab-hl" onclick="go('hl')"><span class="ti">🎨</span><span>Colours</span></button>
       <button class="tab" id="tab-rec" onclick="go('rec')"><span class="ti">📋</span><span>Recipes</span></button>
+      <button class="tab" id="tab-guide" onclick="go('guide')" hidden><span class="ti">📖</span><span>Guides</span></button>
     </nav>
   </header>
+
+  <section id="guide" class="midpage" hidden>
+    <div id="guideview"></div>
+  </section>
 
   <section id="rec" class="midpage" hidden>
     <div id="recview"></div>
@@ -3473,11 +3531,12 @@ window.BIH_LANGS.de = {
     closeDetail();
     if (!WISH) loadWish().then(function () { if (!el('scan').hidden) homeRender(); });
     if (page === 'scan') { homeRender(); if (INV && !INV.length) toggleAdd(true); }
-    ['inv', 'scan', 'eq', 'hl', 'rec'].forEach(function (p) {
+    ['inv', 'scan', 'eq', 'hl', 'rec', 'guide'].forEach(function (p) {
       el(p).hidden = page !== p;
       el('tab-' + p).className = 'tab' + (page === p ? ' on' : '');
     });
     if (page === 'rec') openRecipes();
+    if (page === 'guide') openGuides();
     if (page === 'inv') loadInv();
     if (page === 'eq') Promise.all([catalogReady, fetchInv()]).then(function () { if (!el('eqout').innerHTML) eqSearch(); }, function () {});
     if (page === 'hl') {
@@ -4775,6 +4834,247 @@ window.BIH_LANGS.de = {
       el('eqq').value = name;
       if (c) eqShow(asPaint(c)); else eqSearch();
     });
+  }
+
+  // ---------- Painting guides (owner-only test, 2026-11-25) ----------
+  // Guides read from photos of magazine/book painting guides (e.g. White Dwarf "Paint Splatter"), one per part
+  // ("Ogor Skin"). Saved in the guides table (supabase/012_guides.sql). Shown with each step's paint: a tick if
+  // you have it, otherwise the closest paint you own (same colour logic as Match) and an "Add to shopping list".
+  var GUIDES = null, GREF = [], guideDel = null;
+  window.guidesOwner = function (on) {
+    el('tab-guide').hidden = !on;
+    if (!on && !el('guide').hidden) go('scan');
+  };
+
+  function openGuides() {
+    fetchInv().catch(function () {});
+    if (GUIDES) { if (!el('guideview').innerHTML) guideList(); return; }
+    el('guideview').innerHTML = '<div class="empty">Loading your guides…</div>';
+    google.script.run.withSuccessHandler(function (list) {
+      GUIDES = list || [];
+      Promise.all([catalogReady, fetchInv().catch(function () {})]).then(function () { guideList(); });
+    }).withFailureHandler(function (e) {
+      el('guideview').innerHTML = '<div class="empty">Couldn\'t load the guides: ' + esc(e && e.message || e) + '</div>';
+    }).getGuides();
+  }
+
+  function guideTags(g) { return String(g.tags || '').split(',').map(function (t) { return t.trim(); }).filter(Boolean); }
+
+  // The paint a guide step names, from the paint lists (for its colour), or null.
+  function guideCatalog(name, brand) {
+    var b = canonicalBrand(brand || ''), k = looseName(stripCode(name));
+    if (b === 'Any brand') b = '';
+    function ok(c) { return c.hex && (!b || sameBrand(c.brand, b)); }
+    return CATALOG.filter(function (c) { return ok(c) && looseName(c.name) === k; })[0] ||
+      CATALOG.filter(function (c) { return ok(c) && k.length >= 5 && looseName(c.name).indexOf(k) !== -1; })[0] || null;
+  }
+
+  // What the app knows about one step's paint: have it? its colour; the closest paint you own if not.
+  function guidePaint(s) {
+    var name = String(s.paint || '').trim();
+    if (!name || name === '?') return { unknown: true };
+    var r = resolvePaint(name, s.brand), have = !!(r && r.own && Number(r.own.qty) > 0);
+    var out = { have: have, own: r && r.own, hex: r && r.hex || '' };
+    if (have) return out;
+    var c = guideCatalog(name, s.brand);
+    out.base = c ? asPaint(c) : { brand: canonicalBrand(s.brand || ''), range: '', name: name };
+    if (!out.hex && c) out.hex = c.hex;
+    if (c && out.base.hex) out.alt = closestOwned(out.base, 1)[0] || null;
+    return out;
+  }
+
+  function guideOwnedCount(g) {
+    var seen = {}, n = 0, have = 0;
+    (g.steps || []).forEach(function (s) {
+      var k = (canonicalBrand(s.brand || '') + '|' + String(s.paint || '').trim()).toLowerCase();
+      if (!s.paint || s.paint === '?' || seen[k]) return;
+      seen[k] = true; n++;
+      if (guidePaint(s).have) have++;
+    });
+    return { n: n, have: have };
+  }
+
+  // Your paints may be reloading (the app forgets its copy after a save): draw now, and again once they're back.
+  function guideWhenInv(redraw) {
+    if (INV) return;
+    fetchInv().then(function () {
+      if (!INV || el('guide').hidden) return;
+      var m = el('gmsg') ? el('gmsg').textContent : '';
+      redraw();
+      if (m && el('gmsg')) el('gmsg').textContent = m;
+    }, function () {});
+  }
+
+  function guideList() {
+    guideWhenInv(guideList);
+    GREF = []; guideDel = null;
+    var q = el('gq') ? el('gq').value : '';
+    el('guideview').innerHTML = '<div class="ptitle">Painting guides</div>' +
+      '<div class="muted">Guides from your magazine and book photos, with the paints you have and the closest ones you own for the rest. Only you can see this tab for now.</div>' +
+      '<input type="search" id="gq" placeholder="🔍 Try “skin”, “dead skin”, “leather” or “brass”" oninput="guideFilter()" value="' + esc(q) + '">' +
+      '<div id="gout"></div>' +
+      '<div class="row" style="margin-top:22px"><label class="ghost gfile gsmall">📥 Import guides (.json file)<input type="file" id="gimport" accept=".json,application/json" onchange="guideImport(this)"></label></div>' +
+      '<div id="gmsg" class="muted"></div>';
+    guideFilter();
+  }
+
+  function guideFilter() {
+    var words = normName(el('gq').value).split(' ').filter(Boolean);
+    var list = (GUIDES || []).map(function (g, i) { return { g: g, i: i }; }).filter(function (x) {
+      var hay = ' ' + normName([x.g.name, x.g.tags, x.g.source, x.g.army].join(' ')) + ' ';
+      return words.every(function (w) { return hay.indexOf(w) !== -1; });
+    });
+    el('gout').innerHTML = list.length ? list.map(function (x) {
+      var g = x.g, c = guideOwnedCount(g);
+      return '<div class="hlrow" style="cursor:pointer" onclick="guideShow(' + x.i + ')"><div class="grow"><div class="nm">' + esc(g.name) + '</div>' +
+        '<div class="meta">' + esc([g.source, g.army].filter(Boolean).join(' · ')) + '</div>' +
+        '<div class="chipsw">' + (g.steps || []).map(function (s) {
+          var p = guidePaint(s);
+          return '<span class="sw" title="' + esc(s.paint || '?') + '" style="background:' + (p.hex || 'transparent') + '"></span>';
+        }).join('') + '</div></div>' +
+        (c.n ? '<span class="badge ' + (c.have === c.n ? 'b-great' : c.have ? 'b-ok' : 'b-stretch') + '">' + c.have + ' of ' + c.n + ' paints</span>' : '') + '</div>';
+    }).join('') : '<div class="empty">' + ((GUIDES || []).length ? 'No guide matches that.' : 'No guides yet. Send Claude photos of a painting guide.') + '</div>';
+  }
+
+  function guideTagSearch(t) { el('gq').value = t; guideFilter(); }
+
+  function guideStepHtml(gi, s, si) {
+    var p = guidePaint(s), h = '<div class="gstep"><div class="gnum">' + (si + 1) + '</div>';
+    if (s.pic) h += '<img class="gpic" src="' + esc(s.pic) + '" alt="Step ' + (si + 1) + '" onclick="this.classList.toggle(\'big\')">';
+    h += '<div class="grow"><div class="gline"><span class="tech">' + esc(s.technique || 'Step') + '</span>' +
+      (p.unknown ? '<b class="muted">Paint not readable in the photo</b>'
+        : '<span class="sw" style="background:' + (p.hex || 'transparent') + '"></span><b>' + esc(s.paint) + '</b>' +
+          (s.brand ? '<span class="muted">' + esc(canonicalBrand(s.brand)) + '</span>' : '')) + '</div>' +
+      (s.notes ? '<div class="muted" data-no-i18n>' + esc(s.notes) + '</div>' : '');
+    if (!p.unknown) {
+      if (p.have) h += '<div class="gok">✅ You have it' + (p.own && p.own.qty ? ' (qty ' + esc(p.own.qty) + ')' : '') + '</div>';
+      else {
+        h += '<div class="gmiss">❌ You don\'t have it</div>';
+        if (p.alt) {
+          var b = eqBadge(p.alt.d);
+          h += '<div class="ginst">Use instead: <span class="sw" style="background:' + p.alt.p.hex + '"></span><b>' + esc(p.alt.p.name) + '</b>' +
+            '<span class="muted">' + esc(p.alt.p.brand) + '</span><span class="badge ' + b[1] + '">' + b[0] + '</span></div>';
+        } else h += '<div class="muted" style="font-size:14px;margin-top:4px">' + (p.base && p.base.hex ? 'None of your paints is close.' : 'I don\'t know this paint\'s colour, so I can\'t suggest one of yours.') + '</div>';
+        h += wishBtn(p.base, 'Want', '🛒 Add to shopping list');
+        if (p.base && p.base.hex) { GREF.push(p.base); h += ' <button class="mini ghost gsmall" onclick="guideMatch(' + (GREF.length - 1) + ')">🔁 Other matches</button>'; }
+      }
+    }
+    h += '<div><label class="ghost gfile gsmall">🖼 ' + (s.pic ? 'Change picture' : 'Add picture') + '<input type="file" accept="image/*" onchange="guideStepPic(' + gi + ',' + si + ',this)"></label></div>';
+    return h + '</div></div>';
+  }
+
+  function guideMatch(i) { var p = GREF[i]; if (p) eqOpen(p.brand, p.name, p.range); }
+
+  function guideShow(i) {
+    var g = GUIDES[i];
+    if (!g) return guideList();
+    guideWhenInv(function () { var at = GUIDES.indexOf(g); if (at >= 0) guideShow(at); });
+    GREF = []; guideDel = null;
+    var c = guideOwnedCount(g);
+    el('guideview').innerHTML = '<div class="row" style="margin-top:0"><button class="ghost" onclick="guideList()">← All guides</button></div>' +
+      '<div class="ptitle" style="margin-top:14px">' + esc(g.name) + '</div>' +
+      '<div class="muted">' + esc([g.source, g.army].filter(Boolean).join(' · ')) + (c.n ? ' · you have ' + c.have + ' of ' + c.n + ' paints' : '') + '</div>' +
+      '<div class="gtags">' + guideTags(g).map(function (t) { return '<button class="gtag" onclick="guideList();guideTagSearch(\'' + esc(t.replace(/'/g, '')) + '\')">' + esc(t) + '</button>'; }).join('') + '</div>' +
+      '<div class="rgroup">' + ((g.steps || []).map(function (s, si) { return guideStepHtml(i, s, si); }).join('') || '<div class="empty">No steps.</div>') + '</div>' +
+      '<div class="row"><button class="ghost" id="gpagebtn" onclick="guidePage(' + i + ')">📄 Show the original page</button>' +
+        '<label class="ghost gfile">🖼 Set page photo<input type="file" accept="image/*" onchange="guidePagePic(' + i + ',this)"></label>' +
+        '<button class="ghost" id="gdel" onclick="guideDelete(' + i + ')">🗑 Delete guide</button></div>' +
+      '<div id="gpage"></div><div id="gmsg" class="muted"></div>';
+    window.scrollTo(0, 0);
+  }
+
+  function guidePage(i) {
+    var g = GUIDES[i], btn = el('gpagebtn');
+    if (el('gpage').innerHTML) { el('gpage').innerHTML = ''; btn.textContent = '📄 Show the original page'; return; }
+    btn.disabled = true; btn.textContent = 'Loading…';
+    google.script.run.withSuccessHandler(function (src) {
+      btn.disabled = false;
+      if (!src) { btn.textContent = '📄 Show the original page'; el('gpage').innerHTML = '<div class="muted" style="margin-top:8px">No page photo saved for this guide yet.</div>'; return; }
+      btn.textContent = '📄 Hide the original page';
+      el('gpage').innerHTML = '<img class="gpage" src="' + esc(src) + '" alt="Original page">';
+    }).withFailureHandler(function (e) { btn.disabled = false; btn.textContent = '⚠️ ' + (e && e.message || e); }).getGuidePage(g.id);
+  }
+
+  // A photo made smaller (longest side maxSide) as a JPEG data URL, so it stays light to save and load.
+  function guideShrink(file, maxSide, quality) {
+    return new Promise(function (res, rej) {
+      var img = new Image(), url = URL.createObjectURL(file);
+      img.onload = function () {
+        var s = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight)), cv = document.createElement('canvas');
+        cv.width = Math.round(img.naturalWidth * s); cv.height = Math.round(img.naturalHeight * s);
+        cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+        URL.revokeObjectURL(url);
+        res(cv.toDataURL('image/jpeg', quality || 0.8));
+      };
+      img.onerror = function () { URL.revokeObjectURL(url); rej(new Error('That file isn\'t a picture I can read.')); };
+      img.src = url;
+    });
+  }
+
+  function guideSaved(i, msg) {
+    return function (list) {
+      GUIDES = list || [];
+      var id = msg && msg.id, at = id ? GUIDES.map(function (g) { return g.id; }).indexOf(id) : -1;
+      if (at >= 0) guideShow(at); else guideList();
+      if (msg && msg.text && el('gmsg')) el('gmsg').textContent = msg.text;
+    };
+  }
+  function guideFail(e) { if (el('gmsg')) el('gmsg').textContent = '⚠️ ' + (e && e.message || e); }
+
+  function guideStepPic(i, si, input) {
+    var g = GUIDES[i], f = input.files && input.files[0];
+    if (!g || !f) return;
+    el('gmsg').textContent = 'Saving the picture…';
+    guideShrink(f, 480, 0.8).then(function (src) {
+      var steps = JSON.parse(JSON.stringify(g.steps || []));
+      steps[si].pic = src;
+      google.script.run.withSuccessHandler(guideSaved(i, { id: g.id, text: '✅ Picture saved.' })).withFailureHandler(guideFail).updateGuide(g.id, { steps: steps });
+    }, guideFail);
+  }
+
+  function guidePagePic(i, input) {
+    var g = GUIDES[i], f = input.files && input.files[0];
+    if (!g || !f) return;
+    el('gmsg').textContent = 'Saving the page photo…';
+    guideShrink(f, 1600, 0.75).then(function (src) {
+      google.script.run.withSuccessHandler(guideSaved(i, { id: g.id, text: '✅ Page photo saved.' })).withFailureHandler(guideFail).updateGuide(g.id, { page_photo: src });
+    }, guideFail);
+  }
+
+  // Two taps to delete (no pop-up box).
+  function guideDelete(i) {
+    var g = GUIDES[i], btn = el('gdel');
+    if (guideDel !== g.id) { guideDel = g.id; btn.textContent = '⚠️ Tap again to delete “' + g.name + '”'; return; }
+    btn.disabled = true; btn.textContent = 'Deleting…';
+    google.script.run.withSuccessHandler(function (list) { GUIDES = list || []; guideList(); if (el('gmsg')) el('gmsg').textContent = 'Deleted “' + g.name + '”.'; })
+      .withFailureHandler(guideFail).deleteGuide(g.id);
+  }
+
+  // Import: a .json file, either a list of guides or { pages: { key: dataURL }, guides: [ { ..., page: key } ] }
+  // (one page photo can be shared by all the guides read from that page).
+  function guideImport(input) {
+    var f = input.files && input.files[0];
+    if (!f) return;
+    el('gmsg').textContent = 'Reading ' + f.name + '…';
+    var rd = new FileReader();
+    rd.onload = function () {
+      var data;
+      try { data = JSON.parse(rd.result); } catch (e) { el('gmsg').textContent = '⚠️ That file isn\'t a guides file (' + e.message + ').'; return; }
+      if (Array.isArray(data)) data = { guides: data };
+      var pages = data.pages || {}, list = (data.guides || []).filter(function (g) { return g && g.name; }).map(function (g) {
+        var out = Object.assign({}, g);
+        if (!out.page_photo && out.page && pages[out.page]) out.page_photo = pages[out.page];
+        delete out.page;
+        return out;
+      });
+      if (!list.length) { el('gmsg').textContent = '⚠️ No guides found in that file.'; return; }
+      el('gmsg').textContent = 'Saving ' + list.length + ' guide' + (list.length === 1 ? '' : 's') + '…';
+      google.script.run.withSuccessHandler(function (all) {
+        GUIDES = all || []; guideList();
+        el('gmsg').textContent = '✅ Saved ' + list.length + ' guide' + (list.length === 1 ? '' : 's') + '.';
+      }).withFailureHandler(guideFail).saveGuides(list);
+    };
+    rd.readAsText(f);
   }
 
   // ---------- Painting recipes ----------
