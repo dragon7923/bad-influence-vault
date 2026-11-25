@@ -633,7 +633,7 @@ window.BIH_LANGS.de = {
 // the signed-in person's rows in the Supabase database instead of a Google Sheet.
 // The database's own rules (Row Level Security) are what keep each person's data private; this file only asks.
 (function () {
-  var SB_URL = 'https://ewgbdtkeaoguwayymtay.supabase.co', SB_KEY = 'sb_publishable_md1uOYqL25oZVSb-AknbOg_gfpV7TMH', VERSION = '71f2237cbe';
+  var SB_URL = 'https://ewgbdtkeaoguwayymtay.supabase.co', SB_KEY = 'sb_publishable_md1uOYqL25oZVSb-AknbOg_gfpV7TMH', VERSION = 'cf84670729';
   var sb = window.supabase.createClient(SB_URL, SB_KEY, {
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, storageKey: 'pc-auth' }
   });
@@ -4872,7 +4872,8 @@ window.BIH_LANGS.de = {
   // What the app knows about one step's paint: have it? its colour; the closest paint you own if not.
   function guidePaint(s) {
     var name = String(s.paint || '').trim();
-    if (!name || name === '?') return { unknown: true };
+    if (!name) return { none: true }; // a step with no paint (glue on a phone screen protector, let it dry…): just its notes
+    if (name === '?') return { unknown: true };
     var r = resolvePaint(name, s.brand), have = !!(r && r.own && Number(r.own.qty) > 0);
     var out = { have: have, own: r && r.own, hex: r && r.hex || '' };
     if (have) return out;
@@ -4928,7 +4929,7 @@ window.BIH_LANGS.de = {
       var g = x.g, c = guideOwnedCount(g);
       return '<div class="hlrow" style="cursor:pointer" onclick="guideShow(' + x.i + ')"><div class="grow"><div class="nm">' + esc(g.name) + '</div>' +
         '<div class="meta">' + esc([g.source, g.army].filter(Boolean).join(' · ')) + '</div>' +
-        '<div class="chipsw">' + (g.steps || []).map(function (s) {
+        '<div class="chipsw">' + (g.steps || []).filter(function (s) { return String(s.paint || '').trim(); }).map(function (s) {
           var p = guidePaint(s);
           return '<span class="sw" title="' + esc(s.paint || '?') + '" style="background:' + (p.hex || 'transparent') + '"></span>';
         }).join('') + '</div></div>' +
@@ -4942,11 +4943,11 @@ window.BIH_LANGS.de = {
     var p = guidePaint(s), h = '<div class="gstep"><div class="gnum">' + (si + 1) + '</div>';
     if (s.pic) h += '<img class="gpic" src="' + esc(s.pic) + '" alt="Step ' + (si + 1) + '" onclick="this.classList.toggle(\'big\')">';
     h += '<div class="grow"><div class="gline"><span class="tech">' + esc(s.technique || 'Step') + '</span>' +
-      (p.unknown ? '<b class="muted">Paint not readable in the photo</b>'
+      (p.none ? '' : p.unknown ? '<b class="muted">Paint not readable in the photo</b>'
         : '<span class="sw" style="background:' + (p.hex || 'transparent') + '"></span><b>' + esc(s.paint) + '</b>' +
           (s.brand ? '<span class="muted">' + esc(canonicalBrand(s.brand)) + '</span>' : '')) + '</div>' +
       (s.notes ? '<div class="muted" data-no-i18n>' + esc(s.notes) + '</div>' : '');
-    if (!p.unknown) {
+    if (!p.unknown && !p.none) {
       if (p.have) h += '<div class="gok">✅ You have it' + (p.own && p.own.qty ? ' (qty ' + esc(p.own.qty) + ')' : '') + '</div>';
       else {
         h += '<div class="gmiss">❌ You don\'t have it</div>';
