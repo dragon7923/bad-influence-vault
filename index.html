@@ -633,7 +633,7 @@ window.BIH_LANGS.de = {
 // the signed-in person's rows in the Supabase database instead of a Google Sheet.
 // The database's own rules (Row Level Security) are what keep each person's data private; this file only asks.
 (function () {
-  var SB_URL = 'https://ewgbdtkeaoguwayymtay.supabase.co', SB_KEY = 'sb_publishable_md1uOYqL25oZVSb-AknbOg_gfpV7TMH', VERSION = 'cf84670729';
+  var SB_URL = 'https://ewgbdtkeaoguwayymtay.supabase.co', SB_KEY = 'sb_publishable_md1uOYqL25oZVSb-AknbOg_gfpV7TMH', VERSION = '4f4defdb96';
   var sb = window.supabase.createClient(SB_URL, SB_KEY, {
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, storageKey: 'pc-auth' }
   });
@@ -2135,6 +2135,15 @@ window.BIH_LANGS.de = {
     .gfile { display: inline-flex; align-items: center; cursor: pointer; }
     .gfile input { display: none; }
     .gsmall { padding: 4px 10px; font-size: 12px; margin-top: 6px; }
+    /* Flip through the guides like a book */
+    .gnav { display: flex; align-items: center; gap: 8px; margin-top: 0; }
+    .gnav .gpos { flex: 1; text-align: center; color: var(--muted); font-size: 14px; font-weight: 700; }
+    .gnav button { padding: 8px 14px; }
+    .gturn-l { animation: gturnl .25s ease-out; }
+    .gturn-r { animation: gturnr .25s ease-out; }
+    @keyframes gturnl { from { opacity: 0; transform: translateX(40px); } to { opacity: 1; transform: none; } }
+    @keyframes gturnr { from { opacity: 0; transform: translateX(-40px); } to { opacity: 1; transform: none; } }
+    @media (min-width: 701px) { .gpic { width: 120px; height: 120px; } }
 
     /* Narrow desktop windows and tablets: tighter tabs so all five fit beside the name */
     @media (min-width: 701px) and (max-width: 900px) {
@@ -4840,7 +4849,7 @@ window.BIH_LANGS.de = {
   // Guides read from photos of magazine/book painting guides (e.g. White Dwarf "Paint Splatter"), one per part
   // ("Ogor Skin"). Saved in the guides table (supabase/012_guides.sql). Shown with each step's paint: a tick if
   // you have it, otherwise the closest paint you own (same colour logic as Match) and an "Add to shopping list".
-  var GUIDES = null, GREF = [], guideDel = null;
+  var GUIDES = null, GREF = [], guideDel = null, GORDER = [], GCUR = -1;
   window.guidesOwner = function (on) {
     el('tab-guide').hidden = !on;
     if (!on && !el('guide').hidden) go('scan');
@@ -4908,11 +4917,13 @@ window.BIH_LANGS.de = {
 
   function guideList() {
     guideWhenInv(guideList);
-    GREF = []; guideDel = null;
-    var q = el('gq') ? el('gq').value : '';
+    GREF = []; guideDel = null; GCUR = -1;
+    el('guideview').className = '';
+    var q = el('gq') ? el('gq').value : (guideList.q || '');
     el('guideview').innerHTML = '<div class="ptitle">Painting guides</div>' +
       '<div class="muted">Guides from your magazine and book photos, with the paints you have and the closest ones you own for the rest. Only you can see this tab for now.</div>' +
       '<input type="search" id="gq" placeholder="🔍 Try “skin”, “dead skin”, “leather” or “brass”" oninput="guideFilter()" value="' + esc(q) + '">' +
+      '<div class="row"><button onclick="guideFlipStart()">📖 Flip through</button><button class="ghost" onclick="guideSurprise()">🎲 Surprise me</button></div>' +
       '<div id="gout"></div>' +
       '<div class="row" style="margin-top:22px"><label class="ghost gfile gsmall">📥 Import guides (.json file)<input type="file" id="gimport" accept=".json,application/json" onchange="guideImport(this)"></label></div>' +
       '<div id="gmsg" class="muted"></div>';
@@ -4925,6 +4936,8 @@ window.BIH_LANGS.de = {
       var hay = ' ' + normName([x.g.name, x.g.tags, x.g.source, x.g.army].join(' ')) + ' ';
       return words.every(function (w) { return hay.indexOf(w) !== -1; });
     });
+    GORDER = list.map(function (x) { return x.i; }); // flipping through goes through what the search shows
+    guideList.q = el('gq').value;
     el('gout').innerHTML = list.length ? list.map(function (x) {
       var g = x.g, c = guideOwnedCount(g);
       return '<div class="hlrow" style="cursor:pointer" onclick="guideShow(' + x.i + ')"><div class="grow"><div class="nm">' + esc(g.name) + '</div>' +
@@ -4966,13 +4979,62 @@ window.BIH_LANGS.de = {
 
   function guideMatch(i) { var p = GREF[i]; if (p) eqOpen(p.brand, p.name, p.range); }
 
-  function guideShow(i) {
+  // The guides to flip through: the ones the search shows (all of them if the search finds nothing).
+  function guideOrder() {
+    var all = (GUIDES || []).map(function (g, i) { return i; });
+    var o = (GORDER || []).filter(function (i) { return !!(GUIDES || [])[i]; });
+    return o.length ? o : all;
+  }
+  function guideNavHtml(i) {
+    var o = guideOrder(), at = o.indexOf(i);
+    if (o.length < 2) return '';
+    return '<div class="gnav"><button class="ghost" onclick="guideFlip(-1)" title="Previous (← key or swipe right)">‹ Previous</button>' +
+      '<span class="gpos">' + (at >= 0 ? (at + 1) + ' of ' + o.length : '') + '</span>' +
+      '<button class="ghost" onclick="guideSurprise()" title="A random guide">🎲</button>' +
+      '<button class="ghost" onclick="guideFlip(1)" title="Next (→ key or swipe left)">Next ›</button></div>';
+  }
+  function guideFlipStart() { var o = guideOrder(); if (o.length) guideShow(o[0]); }
+  function guideFlip(d) {
+    var o = guideOrder();
+    if (!o.length) return;
+    var at = o.indexOf(GCUR);
+    guideShow(o[((at < 0 ? (d > 0 ? -1 : 0) : at) + d + o.length) % o.length], d);
+  }
+  function guideSurprise() {
+    var o = guideOrder().filter(function (i) { return i !== GCUR; });
+    if (!o.length) o = guideOrder();
+    if (o.length) guideShow(o[Math.floor(Math.random() * o.length)], 1);
+  }
+  // Swipe left/right on a phone, or the arrow keys on a computer, to turn the page.
+  (function () {
+    var x0 = null, y0 = null;
+    document.addEventListener('touchstart', function (e) {
+      if (GCUR < 0 || el('guide').hidden || !e.touches || e.touches.length !== 1) { x0 = null; return; }
+      x0 = e.touches[0].clientX; y0 = e.touches[0].clientY;
+    }, { passive: true });
+    document.addEventListener('touchend', function (e) {
+      if (x0 === null || GCUR < 0 || el('guide').hidden) return;
+      var t = e.changedTouches && e.changedTouches[0]; if (!t) return;
+      var dx = t.clientX - x0, dy = t.clientY - y0; x0 = null;
+      if (Math.abs(dx) > 70 && Math.abs(dx) > Math.abs(dy) * 2) guideFlip(dx < 0 ? 1 : -1);
+    }, { passive: true });
+    document.addEventListener('keydown', function (e) {
+      if (GCUR < 0 || el('guide').hidden || e.altKey || e.ctrlKey || e.metaKey) return;
+      var t = e.target && e.target.tagName; if (t === 'INPUT' || t === 'TEXTAREA' || t === 'SELECT') return;
+      if (e.key === 'ArrowRight') { e.preventDefault(); guideFlip(1); }
+      if (e.key === 'ArrowLeft') { e.preventDefault(); guideFlip(-1); }
+    });
+  })();
+
+  function guideShow(i, dir) {
     var g = GUIDES[i];
     if (!g) return guideList();
     guideWhenInv(function () { var at = GUIDES.indexOf(g); if (at >= 0) guideShow(at); });
-    GREF = []; guideDel = null;
+    GREF = []; guideDel = null; GCUR = i;
     var c = guideOwnedCount(g);
+    el('guideview').className = dir > 0 ? 'gturn-l' : dir < 0 ? 'gturn-r' : '';
     el('guideview').innerHTML = '<div class="row" style="margin-top:0"><button class="ghost" onclick="guideList()">← All guides</button></div>' +
+      guideNavHtml(i) +
       '<div class="ptitle" style="margin-top:14px">' + esc(g.name) + '</div>' +
       '<div class="muted">' + esc([g.source, g.army].filter(Boolean).join(' · ')) + (c.n ? ' · you have ' + c.have + ' of ' + c.n + ' paints' : '') + '</div>' +
       '<div class="gtags">' + guideTags(g).map(function (t) { return '<button class="gtag" onclick="guideList();guideTagSearch(\'' + esc(t.replace(/'/g, '')) + '\')">' + esc(t) + '</button>'; }).join('') + '</div>' +
@@ -4980,7 +5042,8 @@ window.BIH_LANGS.de = {
       '<div class="row"><button class="ghost" id="gpagebtn" onclick="guidePage(' + i + ')">📄 Show the original page</button>' +
         '<label class="ghost gfile">🖼 Set page photo<input type="file" accept="image/*" onchange="guidePagePic(' + i + ',this)"></label>' +
         '<button class="ghost" id="gdel" onclick="guideDelete(' + i + ')">🗑 Delete guide</button></div>' +
-      '<div id="gpage"></div><div id="gmsg" class="muted"></div>';
+      '<div id="gpage"></div><div id="gmsg" class="muted"></div>' +
+      (guideNavHtml(i) ? '<div style="margin-top:18px">' + guideNavHtml(i) + '</div>' : '');
     window.scrollTo(0, 0);
   }
 
